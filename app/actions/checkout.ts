@@ -61,7 +61,10 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
           throw new Error(prodErr?.message || 'Gagal memuat produk dari database Supabase.');
         }
 
-        const productMap = new Map(dbProducts.map((p) => [p.id, p]));
+        const productMap = new Map<string, (typeof dbProducts)[0]>();
+        for (const p of dbProducts) {
+          productMap.set(p.id, p);
+        }
 
         let calculatedTotal = 0;
         const lineItemsToInsert: Array<{
@@ -159,7 +162,10 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
         }
 
         // 4. Build response object with role-based security masking
-        const lineItemDetailMap = new Map(lineItemsToInsert.map((li) => [li.product_id, li]));
+        const lineItemDetailMap = new Map<string, (typeof lineItemsToInsert)[0]>();
+        for (const li of lineItemsToInsert) {
+          lineItemDetailMap.set(li.product_id, li);
+        }
         const safeItems: TransactionItem[] = (insertedItems || []).map((it) => {
           const detail = lineItemDetailMap.get(it.product_id);
           return {
@@ -208,12 +214,16 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
     }
 
     // Local / In-Memory Store Simulation Fallback
-    const storeProductMap = new Map(dbStore.products.map((p) => [p.id, p]));
+    const productMap = new Map<string, (typeof dbStore.products)[0]>();
+    for (const p of dbStore.products) {
+      productMap.set(p.id, p);
+    }
+
     let calculatedTotal = 0;
     const lineItems: TransactionItem[] = [];
 
     for (const item of items) {
-      const product = storeProductMap.get(item.productId);
+      const product = productMap.get(item.productId);
       if (!product) {
         return { success: false, error: `Produk ID ${item.productId} tidak ditemukan.` };
       }

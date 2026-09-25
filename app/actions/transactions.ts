@@ -6,14 +6,14 @@ import { cookies } from 'next/headers';
 import { dbStore } from '@/lib/db-store';
 import { Role, Transaction } from '@/types/database';
 
-export interface FinancialAnalytics {
-  totalRevenue: number;
-  totalCost: number;
-  grossProfit: number;
-  profitMarginPercent: number;
-  totalTransactionsCount: number;
-  averageTransactionValue: number;
-  topSellingProducts: Array<{
+export interface DashboardAnalytics {
+  summary: {
+    total_revenue: number;
+    total_cost: number;
+    total_profit: number;
+  };
+  top_products: Array<{
+    id: string;
     name: string;
     unit: string;
     quantity: number;
@@ -22,10 +22,137 @@ export interface FinancialAnalytics {
   }>;
 }
 
+// Backward compatibility alias for FinancialAnalytics
+export type FinancialAnalytics = DashboardAnalytics;
+
+/**
+ * Calculates dashboard financial analytics by executing the Supabase RPC function `get_dashboard_analytics`.
+ * All heavy computations (aggregations, sums, joins, groupings, and orderings) run directly inside PostgreSQL.
+ *
+ * @param startDate Optional TIMESTAMPTZ string (e.g. '2026-09-01T00:00:00Z')
+ * @param endDate Optional TIMESTAMPTZ string (e.g. '2026-09-30T23:59:59Z')
+ * @returns DashboardAnalytics | null
+ */
+export async function getAnalytics(
+  startDate?: string | null,
+  endDate?: string | null
+): Promise<DashboardAnalytics | null> {
+  try {
+    const useSupabase = isSupabaseConfigured();
+
+    if (useSupabase) {
+      const cookieStore = cookies();
+      const supabase = createClient(cookieStore);
+
+      const { data, error } = await supabase.rpc('get_dashboard_analytics', {
+        start_date: startDate || null,
+        end_date: endDate || null,
+      });
+
+      if (error) {
+        console.error('Supabase RPC get_dashboard_analytics error:', error.message);
+        return null;
+      }
+
+      if (!data) {
+        return null;
+      }
+
+      const parsed: DashboardAnalytics = typeof data === 'string' ? JSON.parse(data) : data;
+      return parsed;
+    }
+
+    // In-memory fallback simulation for offline/preview demo mode
+    return getLocalFallbackAnalytics(startDate, endDate);
+  } catch (error: unknown) {
+    console.error('Unexpected error in getAnalytics:', error);
+    return null;
+  }
+}
+
+/**
+ * Lightweight fallback calculation when running in offline preview without Supabase credentials.
+ */
+function getLocalFallbackAnalytics(
+  startDate?: string | null,
+  endDate?: string | null
+): DashboardAnalytics {
+  let totalRevenue = 0;
+  let totalCost = 0;
+  const productAggMap = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      unit: string;
+      quantity: number;
+      revenue: number;
+      profit: number;
+    }
+  >();
+
+  const startMs = startDate ? new Date(startDate).getTime() : -Infinity;
+  const endMs = endDate ? new Date(endDate).getTime() : Infinity;
+
+  const filteredTx = dbStore.transactions.filter((tx) => {
+    const txTime = new Date(tx.created_at).getTime();
+    return txTime >= startMs && txTime <= endMs;
+  });
+
+  for (const tx of filteredTx) {
+    totalRevenue += tx.total_amount;
+    for (const item of tx.items || []) {
+      const cost = item.cost_price_at_sale * item.quantity;
+      const rev = item.subtotal;
+      const profit = rev - cost;
+      totalCost += cost;
+
+      const pId = item.product_id || item.product?.id || 'unknown';
+      const existing = productAggMap.get(pId) || {
+        id: pId,
+        name: item.product?.name || 'Material',
+        unit: item.product?.unit || 'Item',
+        quantity: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      existing.quantity += item.quantity;
+      existing.revenue += rev;
+      existing.profit += profit;
+      productAggMap.set(pId, existing);
+    }
+  }
+
+  const topProducts = Array.from(productAggMap.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  return {
+    summary: {
+      total_revenue: Math.round(totalRevenue),
+      total_cost: Math.round(totalCost),
+      total_profit: Math.round(totalRevenue - totalCost),
+    },
+    top_products: topProducts,
+  };
+}
+
+/**
+ * Fetches transaction records. Nested loops for analytics calculation have been removed.
+ * Cost price is strictly masked for cashiers ('kasir') to preserve RBAC security.
+ */
 export async function getTransactionsAction(
   userRole: Role,
-  cashierId?: string
-): Promise<{ success: boolean; data: Transaction[]; analytics?: FinancialAnalytics; error?: string }> {
+  cashierId?: string,
+  startDate?: string | null,
+  endDate?: string | null
+): Promise<{
+  success: boolean;
+  data: Transaction[];
+  analytics?: DashboardAnalytics | null;
+  error?: string;
+}> {
   try {
     const cookieStore = cookies();
     const useSupabase = isSupabaseConfigured();
@@ -38,7 +165,14 @@ export async function getTransactionsAction(
         let query = supabase
           .from('transactions')
           .select(`
-            *,
+            id,
+            invoice_no,
+            cashier_id,
+            total_amount,
+            payment_method,
+            amount_paid,
+            change_amount,
+            created_at,
             cashier:profiles(id, full_name, role),
             items:transaction_items(
               id,
@@ -55,6 +189,13 @@ export async function getTransactionsAction(
 
         if (userRole === 'kasir' && cashierId) {
           query = query.eq('cashier_id', cashierId);
+        }
+
+        if (startDate) {
+          query = query.gte('created_at', startDate);
+        }
+        if (endDate) {
+          query = query.lte('created_at', endDate);
         }
 
         const { data, error } = await query;
@@ -75,7 +216,7 @@ export async function getTransactionsAction(
               product_id: it.product_id,
               quantity: Number(it.quantity),
               selling_price_at_sale: Number(it.selling_price_at_sale),
-              // ATURAN: Sembunyikan harga modal dari kasir
+              // ATURAN KEAMANAN: Sembunyikan harga modal dari kasir
               cost_price_at_sale: userRole === 'kasir' ? 0 : Number(it.cost_price_at_sale),
               subtotal: Number(it.subtotal),
               product: it.product,
@@ -88,7 +229,6 @@ export async function getTransactionsAction(
     }
 
     if (transactions.length === 0 && dbStore.transactions.length > 0) {
-      // Use local store
       transactions = dbStore.transactions
         .filter((t) => (userRole === 'kasir' && cashierId ? t.cashier_id === cashierId : true))
         .map((t) => {
@@ -98,67 +238,16 @@ export async function getTransactionsAction(
             cashier: cashierProfile,
             items: (t.items || []).map((it) => ({
               ...it,
-              // Strictly hide cost_price from kasir
               cost_price_at_sale: userRole === 'kasir' ? 0 : it.cost_price_at_sale,
             })),
           };
         });
     }
 
-    // Calculate Analytics ONLY for Owner role!
-    // ATURAN: Kasir dan Admin TIDAK BOLEH melihat dashboard keuangan / laba
-    let analytics: FinancialAnalytics | undefined = undefined;
-
+    // If owner role, load analytics via database RPC without any nested loops in Next.js memory
+    let analytics: DashboardAnalytics | null = null;
     if (userRole === 'owner') {
-      let totalRevenue = 0;
-      let totalCost = 0;
-      const productMap = new Map<string, { name: string; unit: string; quantity: number; revenue: number; profit: number }>();
-
-      for (const tx of transactions) {
-        totalRevenue += tx.total_amount;
-        for (const item of tx.items || []) {
-          const cost = item.cost_price_at_sale * item.quantity;
-          const rev = item.subtotal;
-          const profit = rev - cost;
-          totalCost += cost;
-
-          const prodKey = item.product_id || item.product?.name || 'unknown';
-          const prodName = item.product?.name || 'Barang Bahan Bangunan';
-          const prodUnit = item.product?.unit || 'Item';
-
-          const existing = productMap.get(prodKey) || {
-            name: prodName,
-            unit: prodUnit,
-            quantity: 0,
-            revenue: 0,
-            profit: 0,
-          };
-
-          existing.quantity += item.quantity;
-          existing.revenue += rev;
-          existing.profit += profit;
-          productMap.set(prodKey, existing);
-        }
-      }
-
-      const grossProfit = totalRevenue - totalCost;
-      const profitMarginPercent = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
-      const count = transactions.length;
-      const averageTransactionValue = count > 0 ? totalRevenue / count : 0;
-
-      const topSellingProducts = Array.from(productMap.values())
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 5);
-
-      analytics = {
-        totalRevenue: Math.round(totalRevenue),
-        totalCost: Math.round(totalCost),
-        grossProfit: Math.round(grossProfit),
-        profitMarginPercent: Number(profitMarginPercent.toFixed(1)),
-        totalTransactionsCount: count,
-        averageTransactionValue: Math.round(averageTransactionValue),
-        topSellingProducts,
-      };
+      analytics = await getAnalytics(startDate, endDate);
     }
 
     return { success: true, data: transactions, analytics };

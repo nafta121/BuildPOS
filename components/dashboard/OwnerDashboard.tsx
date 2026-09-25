@@ -4,37 +4,67 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
-import { getTransactionsAction, FinancialAnalytics } from '@/app/actions/transactions';
+import { 
+  getTransactionsAction, 
+  getAnalytics, 
+  DashboardAnalytics 
+} from '@/app/actions/transactions';
 import { 
   TrendingUp, 
   DollarSign, 
   Coins, 
-  Percent, 
   Receipt, 
   ShieldAlert, 
   RefreshCw,
   Award,
   Calendar,
-  Layers
+  Layers,
+  Clock
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
   const { currentProfile } = useAuthStore();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [analytics, setAnalytics] = useState<FinancialAnalytics | null>(null);
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
 
   const isOwner = currentProfile?.role === 'owner';
+
+  const getDateRange = (filter: 'all' | 'today' | '7days' | '30days') => {
+    const now = new Date();
+    if (filter === 'today') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    if (filter === '7days') {
+      const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    if (filter === '30days') {
+      const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return { startDate: start.toISOString(), endDate: now.toISOString() };
+    }
+    return { startDate: null, endDate: null };
+  };
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await getTransactionsAction(currentProfile?.role || 'kasir');
-      if (res.success) {
-        setTransactions(res.data);
-        if (res.analytics) {
-          setAnalytics(res.analytics);
-        }
+      const { startDate, endDate } = getDateRange(dateFilter);
+
+      const [txRes, analyticsData] = await Promise.all([
+        getTransactionsAction(currentProfile?.role || 'kasir', undefined, startDate, endDate),
+        isOwner ? getAnalytics(startDate, endDate) : Promise.resolve(null),
+      ]);
+
+      if (txRes.success) {
+        setTransactions(txRes.data);
+      }
+      if (analyticsData) {
+        setAnalytics(analyticsData);
+      } else if (txRes.analytics) {
+        setAnalytics(txRes.analytics);
       }
     } catch (err) {
       console.error('Error loading dashboard analytics:', err);
@@ -46,7 +76,7 @@ export const OwnerDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.role]);
+  }, [currentProfile?.role, dateFilter]);
 
   if (!isOwner) {
     return (
@@ -66,6 +96,14 @@ export const OwnerDashboard: React.FC = () => {
     );
   }
 
+  const profitMarginPercent = analytics?.summary.total_revenue && analytics.summary.total_revenue > 0
+    ? ((analytics.summary.total_profit / analytics.summary.total_revenue) * 100).toFixed(1)
+    : '0';
+
+  const averageTransactionValue = transactions.length > 0 && analytics
+    ? Math.round(analytics.summary.total_revenue / transactions.length)
+    : 0;
+
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto">
       {/* Header */}
@@ -79,17 +117,67 @@ export const OwnerDashboard: React.FC = () => {
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Rekapitulasi pendapatan, beban modal (HPP), dan laba kotor toko bahan bangunan.
+              Rekapitulasi pendapatan, beban modal (HPP), dan laba kotor toko bahan bangunan via Supabase RPC.
             </p>
           </div>
 
-          <button
-            onClick={loadData}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Perbarui Data</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Filter Rentang Tanggal */}
+            <div className="flex items-center bg-slate-850 p-1 rounded-xl border border-slate-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setDateFilter('all')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  dateFilter === 'all'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Semua
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilter('today')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  dateFilter === 'today'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Hari Ini
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilter('7days')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  dateFilter === '7days'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                7 Hari
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilter('30days')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  dateFilter === '30days'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                30 Hari
+              </button>
+            </div>
+
+            <button
+              onClick={loadData}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Perbarui Data</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -105,7 +193,7 @@ export const OwnerDashboard: React.FC = () => {
                     Total Omzet (Penjualan)
                   </span>
                   <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 font-mono">
-                    Rp {analytics.totalRevenue.toLocaleString('id-ID')}
+                    Rp {analytics.summary.total_revenue.toLocaleString('id-ID')}
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
@@ -113,7 +201,7 @@ export const OwnerDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-[11px] text-slate-400 mt-3">
-                Dari {analytics.totalTransactionsCount} total transaksi kasir
+                Dari {transactions.length} total transaksi periode ini
               </p>
             </div>
 
@@ -125,7 +213,7 @@ export const OwnerDashboard: React.FC = () => {
                     Beban Modal (HPP)
                   </span>
                   <div className="text-2xl sm:text-3xl font-black text-slate-300 mt-1.5 font-mono">
-                    Rp {analytics.totalCost.toLocaleString('id-ID')}
+                    Rp {analytics.summary.total_cost.toLocaleString('id-ID')}
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -145,7 +233,7 @@ export const OwnerDashboard: React.FC = () => {
                     Laba Kotor Bersih
                   </span>
                   <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1.5 font-mono">
-                    Rp {analytics.grossProfit.toLocaleString('id-ID')}
+                    Rp {analytics.summary.total_profit.toLocaleString('id-ID')}
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300">
@@ -153,7 +241,7 @@ export const OwnerDashboard: React.FC = () => {
                 </div>
               </div>
               <p className="text-[11px] text-emerald-300 mt-3 font-semibold">
-                Margin Keuntungan: {analytics.profitMarginPercent}%
+                Margin Keuntungan: {profitMarginPercent}%
               </p>
             </div>
 
@@ -165,7 +253,7 @@ export const OwnerDashboard: React.FC = () => {
                     Rata-Rata / Nota
                   </span>
                   <div className="text-2xl sm:text-3xl font-black text-white mt-1.5 font-mono">
-                    Rp {analytics.averageTransactionValue.toLocaleString('id-ID')}
+                    Rp {averageTransactionValue.toLocaleString('id-ID')}
                   </div>
                 </div>
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -180,32 +268,34 @@ export const OwnerDashboard: React.FC = () => {
         ) : (
           <div className="p-8 text-center text-slate-500">
             <RefreshCw className="w-6 h-6 animate-spin mx-auto text-emerald-500" />
-            <p className="text-xs mt-2">Menghitung analitik laba...</p>
+            <p className="text-xs mt-2">Menghitung analitik laba via database RPC...</p>
           </div>
         )}
 
         {/* Top Products by Profit & Volume */}
-        {analytics && analytics.topSellingProducts.length > 0 && (
+        {analytics && analytics.top_products && analytics.top_products.length > 0 && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
             <div className="flex items-center gap-2 mb-4">
               <Award className="w-5 h-5 text-amber-400" />
               <h2 className="text-base font-bold text-white">
-                5 Material Terlaris & Kontribusi Laba Tertinggi
+                Material Terlaris & Kontribusi Laba Tertinggi (Database Aggregated)
               </h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {analytics.topSellingProducts.map((p, idx) => {
+              {analytics.top_products.map((p, idx) => {
                 const margin = p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : '0';
                 return (
                   <div
-                    key={idx}
+                    key={p.id || idx}
                     className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between text-xs text-slate-400">
                         <span className="font-bold text-amber-400">Rank #{idx + 1}</span>
-                        <span className="font-mono">{p.quantity % 1 === 0 ? p.quantity : p.quantity.toFixed(2)} {p.unit}</span>
+                        <span className="font-mono">
+                          {p.quantity % 1 === 0 ? p.quantity : Number(p.quantity).toFixed(2)} {p.unit}
+                        </span>
                       </div>
                       <h3 className="font-bold text-white text-sm mt-1">{p.name}</h3>
                     </div>
@@ -214,13 +304,13 @@ export const OwnerDashboard: React.FC = () => {
                       <div>
                         <span className="text-[10px] text-slate-400 block">Omzet</span>
                         <span className="text-xs font-mono font-bold text-white">
-                          Rp {p.revenue.toLocaleString('id-ID')}
+                          Rp {Math.round(p.revenue).toLocaleString('id-ID')}
                         </span>
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-emerald-400 block">Laba ({margin}%)</span>
                         <span className="text-xs font-mono font-black text-emerald-400">
-                          +Rp {p.profit.toLocaleString('id-ID')}
+                          +Rp {Math.round(p.profit).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
@@ -252,45 +342,53 @@ export const OwnerDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {transactions.map((tx) => {
-                  let txCost = 0;
-                  for (const it of tx.items || []) {
-                    txCost += it.cost_price_at_sale * it.quantity;
-                  }
-                  const txProfit = tx.total_amount - txCost;
-                  const txMargin = tx.total_amount > 0 ? ((txProfit / tx.total_amount) * 100).toFixed(1) : '0';
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                      Tidak ada transaksi pada periode ini.
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.map((tx) => {
+                    let txCost = 0;
+                    for (const it of tx.items || []) {
+                      txCost += it.cost_price_at_sale * it.quantity;
+                    }
+                    const txProfit = tx.total_amount - txCost;
+                    const txMargin = tx.total_amount > 0 ? ((txProfit / tx.total_amount) * 100).toFixed(1) : '0';
 
-                  return (
-                    <tr key={tx.id} className="hover:bg-slate-850/50 transition">
-                      <td className="py-3 px-3 font-mono font-bold text-white text-xs">
-                        {tx.invoice_no}
-                      </td>
-                      <td className="py-3 px-3 text-xs text-slate-400">
-                        {new Date(tx.created_at).toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="py-3 px-3 text-xs text-slate-300">
-                        {tx.cashier?.full_name || 'Kasir'}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-white">
-                        Rp {tx.total_amount.toLocaleString('id-ID')}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
-                        Rp {Math.round(txCost).toLocaleString('id-ID')}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-xs font-bold text-emerald-400">
-                        Rp {Math.round(txProfit).toLocaleString('id-ID')}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
-                          {txMargin}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={tx.id} className="hover:bg-slate-850/50 transition">
+                        <td className="py-3 px-3 font-mono font-bold text-white text-xs">
+                          {tx.invoice_no}
+                        </td>
+                        <td className="py-3 px-3 text-xs text-slate-400">
+                          {new Date(tx.created_at).toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="py-3 px-3 text-xs text-slate-300">
+                          {tx.cashier?.full_name || 'Kasir'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs text-white">
+                          Rp {tx.total_amount.toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
+                          Rp {Math.round(txCost).toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-xs font-bold text-emerald-400">
+                          Rp {Math.round(txProfit).toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+                            {txMargin}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
