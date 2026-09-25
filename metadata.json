@@ -1,0 +1,8 @@
+{
+  "name": "BuildPOS - Toko Bangunan POS & Inventory",
+  "description": "Aplikasi Point of Sale (POS) MVP dan manajemen inventaris cerdas khusus Toko Bangunan dengan dukungan kuantitas desimal, kasir fat-finger, cetak struk thermal, dan role-based access control.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
