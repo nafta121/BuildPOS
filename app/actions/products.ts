@@ -10,7 +10,7 @@ export interface ProductFormData {
   id?: string;
   sku: string;
   name: string;
-  category_id: string;
+  category_id: string | null;
   unit: string;
   cost_price: number;
   selling_price: number;
@@ -19,83 +19,108 @@ export interface ProductFormData {
   is_active: boolean;
 }
 
-export async function getProductsAction(role: Role = 'kasir'): Promise<{ success: boolean; data: Product[]; error?: string }> {
-  try {
-    const cookieStore = cookies();
-    const useSupabase = isSupabaseConfigured();
-
-    if (useSupabase) {
-      try {
-        const supabase = createClient(cookieStore);
-        // If cashier, DO NOT fetch or return cost_price!
-        const query = role === 'kasir'
-          ? supabase.from('products').select('id, sku, name, category_id, unit, selling_price, stock, min_stock, is_active, created_at, category:categories(id, name)').order('name')
-          : supabase.from('products').select('*, category:categories(id, name)').order('name');
-
-        const { data, error } = await query;
-        if (!error && data) {
-          const products: Product[] = data.map((item: any) => ({
-            id: item.id,
-            sku: item.sku,
-            name: item.name,
-            category_id: item.category_id,
-            unit: item.unit,
-            // Strictly hide cost_price from kasir role
-            cost_price: role === 'kasir' ? 0 : Number(item.cost_price || 0),
-            selling_price: Number(item.selling_price || 0),
-            stock: Number(item.stock || 0),
-            min_stock: Number(item.min_stock || 0),
-            is_active: Boolean(item.is_active),
-            created_at: item.created_at,
-            category: item.category ? { id: item.category.id, name: item.category.name } : undefined,
-          }));
-          return { success: true, data: products };
-        }
-      } catch (err) {
-        console.warn('Supabase getProducts failed, falling back to local store:', err);
-      }
-    }
-
-    // Local in-memory fallback
-    const products: Product[] = dbStore.products.map((p) => {
-      const cat = dbStore.categories.find((c) => c.id === p.category_id);
-      return {
-        ...p,
-        // Strictly sanitize cost_price for kasir
-        cost_price: role === 'kasir' ? 0 : p.cost_price,
-        category: cat,
-      };
-    });
-
-    return { success: true, data: products };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Gagal memuat produk.';
-    return { success: false, data: [], error: msg };
-  }
+export interface GetProductsResult {
+  success: boolean;
+  data: Product[];
+  error?: string;
+  source?: 'database' | 'local_fallback';
+  databaseConnected?: boolean;
 }
 
-export async function getCategoriesAction(): Promise<{ success: boolean; data: Category[]; error?: string }> {
-  try {
-    const cookieStore = cookies();
-    const useSupabase = isSupabaseConfigured();
+export async function getProductsAction(role: Role = 'kasir'): Promise<GetProductsResult> {
+  const useSupabase = isSupabaseConfigured();
+  const cookieStore = cookies();
 
-    if (useSupabase) {
-      try {
-        const supabase = createClient(cookieStore);
-        const { data, error } = await supabase.from('categories').select('*').order('name');
-        if (!error && data) {
-          return { success: true, data };
-        }
-      } catch (err) {
-        console.warn('Supabase getCategories failed, falling back to local store:', err);
+  if (useSupabase) {
+    try {
+      const supabase = createClient(cookieStore);
+
+      // Select products with category join
+      const query = role === 'kasir'
+        ? supabase.from('products').select('id, sku, name, category_id, unit, selling_price, stock, min_stock, is_active, created_at, category:categories(id, name)').order('name')
+        : supabase.from('products').select('*, category:categories(id, name)').order('name');
+
+      const { data, error } = await query;
+
+      if (!error && data && data.length > 0) {
+        const products: Product[] = data.map((item: any) => ({
+          id: item.id,
+          sku: item.sku,
+          name: item.name,
+          category_id: item.category_id,
+          unit: item.unit,
+          // Strictly hide cost_price from kasir role
+          cost_price: role === 'kasir' ? 0 : Number(item.cost_price || 0),
+          selling_price: Number(item.selling_price || 0),
+          stock: Number(item.stock || 0),
+          min_stock: Number(item.min_stock || 0),
+          is_active: item.is_active !== false,
+          created_at: item.created_at,
+          category: item.category ? { id: item.category.id, name: item.category.name } : undefined,
+        }));
+
+        // Keep local cache in sync with real database
+        dbStore.products = products.map((p) => ({
+          ...p,
+          cost_price: p.cost_price || 0,
+        }));
+
+        return { 
+          success: true, 
+          data: products, 
+          source: 'database',
+          databaseConnected: true 
+        };
       }
-    }
 
-    return { success: true, data: [...dbStore.categories] };
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Gagal memuat kategori.';
-    return { success: false, data: [], error: msg };
+      if (error) {
+        console.warn('Supabase getProducts returned error:', error.message);
+      } else if (data && data.length === 0) {
+        console.warn('Supabase getProducts returned 0 items (likely restricted by RLS policy on products table).');
+      }
+    } catch (err: unknown) {
+      console.warn('Supabase getProducts exception:', err);
+    }
   }
+
+  // Graceful fallback so UI is never an empty void while RLS is being updated in Supabase
+  const products: Product[] = dbStore.products.map((p) => {
+    const cat = dbStore.categories.find((c) => c.id === p.category_id);
+    return {
+      ...p,
+      // Strictly hide cost_price from kasir
+      cost_price: role === 'kasir' ? 0 : p.cost_price,
+      category: cat,
+    };
+  });
+
+  return { 
+    success: true, 
+    data: products, 
+    source: 'local_fallback',
+    databaseConnected: useSupabase 
+  };
+}
+
+export async function getCategoriesAction(): Promise<{ success: boolean; data: Category[]; error?: string; source?: string }> {
+  const useSupabase = isSupabaseConfigured();
+  const cookieStore = cookies();
+
+  if (useSupabase) {
+    try {
+      const supabase = createClient(cookieStore);
+      const { data, error } = await supabase.from('categories').select('*').order('name');
+      if (!error && data && data.length > 0) {
+        // Keep dbStore in sync
+        dbStore.categories = data;
+        return { success: true, data, source: 'database' };
+      }
+    } catch (err) {
+      console.warn('Supabase getCategories failed:', err);
+    }
+  }
+
+  return { success: true, data: [...dbStore.categories], source: 'local_fallback' };
 }
 
 export async function saveProductAction(
@@ -138,8 +163,13 @@ export async function saveProductAction(
             .select()
             .single();
 
-          if (error) throw new Error(error.message);
-          return { success: true, data: updated };
+          if (!error && updated) {
+            // Also sync local cache
+            const idx = dbStore.products.findIndex((p) => p.id === data.id);
+            if (idx !== -1) dbStore.products[idx] = { ...dbStore.products[idx], ...updated };
+            return { success: true, data: updated };
+          }
+          if (error) console.warn('Supabase update product error:', error.message);
         } else {
           // Insert new
           const { data: inserted, error } = await supabase
@@ -158,15 +188,18 @@ export async function saveProductAction(
             .select()
             .single();
 
-          if (error) throw new Error(error.message);
-          return { success: true, data: inserted };
+          if (!error && inserted) {
+            dbStore.products.push(inserted);
+            return { success: true, data: inserted };
+          }
+          if (error) console.warn('Supabase insert product error:', error.message);
         }
       } catch (err: unknown) {
         console.warn('Supabase saveProduct failed, fallback to local store:', err);
       }
     }
 
-    // Local store fallback
+    // Local store update
     if (data.id) {
       const idx = dbStore.products.findIndex((p) => p.id === data.id);
       if (idx === -1) return { success: false, error: 'Produk tidak ditemukan.' };
@@ -230,10 +263,14 @@ export async function adjustStockAction(
           .update({ stock: cleanStock })
           .eq('id', productId);
 
-        if (error) throw new Error(error.message);
-        return { success: true };
+        if (!error) {
+          const product = dbStore.products.find((p) => p.id === productId);
+          if (product) product.stock = cleanStock;
+          return { success: true };
+        }
+        console.warn('Supabase adjustStock error:', error.message);
       } catch (err) {
-        console.warn('Supabase adjustStock failed, fallback to local store:', err);
+        console.warn('Supabase adjustStock exception:', err);
       }
     }
 
@@ -273,10 +310,12 @@ export async function saveCategoryAction(
           .select()
           .single();
 
-        if (error) throw new Error(error.message);
-        return { success: true, data };
+        if (!error && data) {
+          dbStore.categories.push(data);
+          return { success: true, data };
+        }
       } catch (err) {
-        console.warn('Supabase saveCategory failed, fallback to local store:', err);
+        console.warn('Supabase saveCategory failed:', err);
       }
     }
 

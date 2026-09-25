@@ -45,6 +45,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   ].filter((s) => s.value >= totalAmount || s.label === 'Uang Pas');
 
   const handleCheckout = async () => {
+    if (amountPaidNum < 0) {
+      setErrorMessage('Nominal pembayaran tidak boleh bernilai minus.');
+      return;
+    }
+
+    if (items.some((i) => i.cart_quantity <= 0)) {
+      setErrorMessage('Kuantitas barang dalam keranjang harus lebih besar dari 0.');
+      return;
+    }
+
     if (!isSufficient && paymentMethod === 'tunai') {
       setErrorMessage(`Uang pembayaran kurang Rp ${Math.abs(changeAmount).toLocaleString('id-ID')}`);
       return;

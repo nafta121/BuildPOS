@@ -9,6 +9,7 @@ import { getProductsAction, getCategoriesAction } from '@/app/actions/products';
 import { VirtualNumpad } from './VirtualNumpad';
 import { CheckoutModal } from './CheckoutModal';
 import { ThermalReceipt } from './ThermalReceipt';
+import { RlsFixModal } from '@/components/setup/RlsFixModal';
 import { 
   Search, 
   ShoppingCart, 
@@ -51,6 +52,8 @@ export const PosView: React.FC = () => {
 
   // Mobile Cart Drawer State
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [dataSource, setDataSource] = useState<'database' | 'local_fallback'>('local_fallback');
+  const [isRlsModalOpen, setIsRlsModalOpen] = useState(false);
 
   // Load products and categories
   const loadData = async () => {
@@ -61,7 +64,10 @@ export const PosView: React.FC = () => {
         getCategoriesAction(),
       ]);
 
-      if (prodRes.success) setProducts(prodRes.data);
+      if (prodRes.success) {
+        setProducts(prodRes.data);
+        if (prodRes.source) setDataSource(prodRes.source);
+      }
       if (catRes.success) setCategories(catRes.data);
     } catch (err) {
       console.error('Error loading POS data:', err);
@@ -83,7 +89,7 @@ export const PosView: React.FC = () => {
         (prod.sku && prod.sku.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesCat =
         selectedCategoryId === 'all' || prod.category_id === selectedCategoryId;
-      return matchesSearch && matchesCat && prod.is_active;
+      return matchesSearch && matchesCat && prod.is_active !== false;
     });
   }, [products, searchQuery, selectedCategoryId]);
 
@@ -160,11 +166,28 @@ export const PosView: React.FC = () => {
             )}
           </div>
 
-          {/* Refresh Button */}
+          {/* Sync Status Badge & Refresh Button */}
           <div className="flex items-center gap-2">
+            {dataSource === 'database' ? (
+              <span className="px-3 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="hidden sm:inline">Supabase DB</span> (Sinkron)
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsRlsModalOpen(true)}
+                className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 active:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                title="Klik untuk membuka instruksi sinkronisasi database Supabase"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Buka Sinkron DB</span>
+              </button>
+            )}
+
             <button
               onClick={loadData}
-              className="px-3.5 py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-2 text-sm font-semibold"
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-2 text-sm font-semibold"
               title="Perbarui Data Produk"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -394,7 +417,7 @@ export const PosView: React.FC = () => {
 
                     <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-800">
                       {/* Decimal Quantity Selector Controls */}
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -405,9 +428,25 @@ export const PosView: React.FC = () => {
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="min-w-[48px] text-center font-bold text-xs sm:text-sm text-emerald-400 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">
-                          {item.cart_quantity} {item.unit}
-                        </span>
+
+                        <div className="flex items-center bg-slate-900 rounded border border-slate-700 px-1">
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={item.cart_quantity}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val)) {
+                                updateQuantity(item.id, Math.max(0, val));
+                              }
+                            }}
+                            className="w-14 text-center font-bold text-xs sm:text-sm text-emerald-400 font-mono bg-transparent focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-400 font-semibold">{item.unit}</span>
+                        </div>
+
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -539,7 +578,7 @@ export const PosView: React.FC = () => {
                   </div>
 
                   <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-800">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -549,9 +588,23 @@ export const PosView: React.FC = () => {
                       >
                         -
                       </button>
-                      <span className="font-bold text-emerald-400 font-mono text-sm px-2">
-                        {item.cart_quantity} {item.unit}
-                      </span>
+                      <div className="flex items-center bg-slate-900 rounded border border-slate-700 px-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={item.cart_quantity}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val)) {
+                              updateQuantity(item.id, Math.max(0, val));
+                            }
+                          }}
+                          className="w-14 text-center font-bold text-sm text-emerald-400 font-mono bg-transparent focus:outline-none"
+                        />
+                        <span className="text-[10px] text-slate-400 font-semibold">{item.unit}</span>
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -634,6 +687,13 @@ export const PosView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Supabase RLS Fix Helper Modal */}
+      <RlsFixModal
+        isOpen={isRlsModalOpen}
+        onClose={() => setIsRlsModalOpen(false)}
+        onRefresh={loadData}
+      />
     </div>
   );
 };

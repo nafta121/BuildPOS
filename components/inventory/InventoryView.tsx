@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   ArrowUpDown
 } from 'lucide-react';
+import { RlsFixModal } from '@/components/setup/RlsFixModal';
 
 export const InventoryView: React.FC = () => {
   const { currentProfile } = useAuthStore();
@@ -39,6 +40,8 @@ export const InventoryView: React.FC = () => {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isRlsModalOpen, setIsRlsModalOpen] = useState(false);
+  const [dataSource, setDataSource] = useState<'database' | 'local_fallback'>('local_fallback');
 
   // Edit / Form state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -72,7 +75,10 @@ export const InventoryView: React.FC = () => {
         getProductsAction(userRole),
         getCategoriesAction(),
       ]);
-      if (prodRes.success) setProducts(prodRes.data);
+      if (prodRes.success) {
+        setProducts(prodRes.data);
+        if (prodRes.source) setDataSource(prodRes.source);
+      }
       if (catRes.success) {
         setCategories(catRes.data);
         if (catRes.data.length > 0 && !formData.category_id) {
@@ -129,7 +135,7 @@ export const InventoryView: React.FC = () => {
       id: prod.id,
       sku: prod.sku || '',
       name: prod.name,
-      category_id: prod.category_id,
+      category_id: prod.category_id || '',
       unit: prod.unit,
       cost_price: prod.cost_price,
       selling_price: prod.selling_price,
@@ -151,6 +157,12 @@ export const InventoryView: React.FC = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (formData.selling_price < 0 || formData.cost_price < 0 || formData.stock < 0 || formData.min_stock < 0) {
+      setFormError('Nilai harga modal, harga jual, dan stok fisik tidak boleh bernilai negatif (minus).');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -256,6 +268,23 @@ export const InventoryView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5">
+            {dataSource === 'database' ? (
+              <span className="px-3 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Supabase DB (Sinkron)</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsRlsModalOpen(true)}
+                className="px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                title="Buka instruksi sinkronisasi database Supabase"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Buka Sinkron DB</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsCategoryModalOpen(true)}
               className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-sm font-semibold flex items-center gap-1.5 transition"
@@ -500,7 +529,7 @@ export const InventoryView: React.FC = () => {
                     Kategori
                   </label>
                   <select
-                    value={formData.category_id}
+                    value={formData.category_id || ''}
                     onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white"
                   >
@@ -543,9 +572,10 @@ export const InventoryView: React.FC = () => {
                   </label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
+                    min="0"
                     value={formData.min_stock}
-                    onChange={(e) => setFormData({ ...formData, min_stock: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, min_stock: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono"
                   />
                 </div>
@@ -558,9 +588,10 @@ export const InventoryView: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="0.01"
                     min="0"
                     value={formData.cost_price}
-                    onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, cost_price: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono"
                   />
                 </div>
@@ -571,10 +602,11 @@ export const InventoryView: React.FC = () => {
                   </label>
                   <input
                     type="number"
+                    step="0.01"
                     min="0"
                     required
                     value={formData.selling_price}
-                    onChange={(e) => setFormData({ ...formData, selling_price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, selling_price: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-emerald-400 font-bold font-mono"
                   />
                 </div>
@@ -587,9 +619,10 @@ export const InventoryView: React.FC = () => {
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   required
                   value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, stock: Math.max(0, parseFloat(e.target.value) || 0) })}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono font-bold"
                 />
               </div>
@@ -704,6 +737,13 @@ export const InventoryView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Supabase RLS Fix Helper Modal */}
+      <RlsFixModal
+        isOpen={isRlsModalOpen}
+        onClose={() => setIsRlsModalOpen(false)}
+        onRefresh={loadData}
+      />
     </div>
   );
 };

@@ -4,6 +4,21 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CartItem, Product } from '@/types/database';
 
+/**
+ * Helper to round to 2 decimal places using Number.EPSILON
+ * Eliminates JavaScript floating-point representation quirks.
+ */
+export const round2 = (val: number): number => {
+  return Math.round((val + Number.EPSILON) * 100) / 100;
+};
+
+/**
+ * Calculates item subtotal = quantity * sellingPrice with 2-decimal precision
+ */
+export const calcSubtotal = (qty: number, price: number): number => {
+  return Math.round((qty * price + Number.EPSILON) * 100) / 100;
+};
+
 interface CartState {
   items: CartItem[];
   selectedProductId: string | null;
@@ -14,6 +29,7 @@ interface CartState {
   removeItem: (productId: string) => void;
   clearCart: () => void;
   getTotalAmount: () => number;
+  getTotalQuantity: () => number;
   getTotalItemsCount: () => number;
 }
 
@@ -26,56 +42,64 @@ export const useCartStore = create<CartState>()(
       setSelectedProductId: (id: string | null) => {
         set({ selectedProductId: id });
       },
-      
+
       addItem: (product, quantity = 1) => {
-        const cleanQty = Math.max(0.01, Number(quantity.toFixed(2)));
+        // Enforce positive decimal quantity with 2-decimal precision
+        const cleanQty = Math.max(0.01, round2(quantity));
+
         set((state) => {
-          const existingItem = state.items.find((item) => item.id === product.id);
-          if (existingItem) {
-            const newQty = Number((existingItem.cart_quantity + cleanQty).toFixed(2));
+          const existingIndex = state.items.findIndex((item) => item.id === product.id);
+
+          if (existingIndex > -1) {
+            const existing = state.items[existingIndex];
+            const newQty = round2(existing.cart_quantity + cleanQty);
+            const updatedItems = [...state.items];
+            updatedItems[existingIndex] = {
+              ...existing,
+              cart_quantity: newQty,
+              subtotal: calcSubtotal(newQty, existing.selling_price),
+            };
+
             return {
               selectedProductId: product.id,
-              items: state.items.map((item) =>
-                item.id === product.id
-                  ? { 
-                      ...item, 
-                      cart_quantity: newQty,
-                      subtotal: Number((newQty * item.selling_price).toFixed(2))
-                    }
-                  : item
-              ),
+              items: updatedItems,
             };
           }
+
+          // New cart item
+          const newCartItem: CartItem = {
+            ...product,
+            cart_quantity: cleanQty,
+            subtotal: calcSubtotal(cleanQty, product.selling_price),
+          };
+
           return {
             selectedProductId: product.id,
-            items: [
-              ...state.items, 
-              { 
-                ...product, 
-                cart_quantity: cleanQty, 
-                subtotal: Number((cleanQty * product.selling_price).toFixed(2)) 
-              }
-            ],
+            items: [...state.items, newCartItem],
           };
         });
       },
 
       updateQuantity: (productId, quantity) => {
-        const cleanQty = Math.max(0, Number(quantity.toFixed(2)));
+        const cleanQty = round2(quantity);
+
         set((state) => {
+          // If quantity is zero or negative, remove from cart
           if (cleanQty <= 0) {
             return {
               items: state.items.filter((item) => item.id !== productId),
-              selectedProductId: state.selectedProductId === productId ? null : state.selectedProductId,
+              selectedProductId:
+                state.selectedProductId === productId ? null : state.selectedProductId,
             };
           }
+
           return {
             items: state.items.map((item) =>
               item.id === productId
-                ? { 
-                    ...item, 
-                    cart_quantity: cleanQty, 
-                    subtotal: Number((cleanQty * item.selling_price).toFixed(2))
+                ? {
+                    ...item,
+                    cart_quantity: cleanQty,
+                    subtotal: calcSubtotal(cleanQty, item.selling_price),
                   }
                 : item
             ),
@@ -87,14 +111,23 @@ export const useCartStore = create<CartState>()(
         set((state) => {
           const item = state.items.find((i) => i.id === productId);
           if (!item) return state;
-          const newQty = Math.max(0.1, Number((item.cart_quantity + delta).toFixed(2)));
+
+          const newQty = round2(item.cart_quantity + delta);
+          if (newQty <= 0) {
+            return {
+              items: state.items.filter((i) => i.id !== productId),
+              selectedProductId:
+                state.selectedProductId === productId ? null : state.selectedProductId,
+            };
+          }
+
           return {
             items: state.items.map((i) =>
               i.id === productId
                 ? {
                     ...i,
                     cart_quantity: newQty,
-                    subtotal: Number((newQty * i.selling_price).toFixed(2)),
+                    subtotal: calcSubtotal(newQty, i.selling_price),
                   }
                 : i
             ),
@@ -105,14 +138,25 @@ export const useCartStore = create<CartState>()(
       removeItem: (productId) => {
         set((state) => ({
           items: state.items.filter((item) => item.id !== productId),
-          selectedProductId: state.selectedProductId === productId ? null : state.selectedProductId,
+          selectedProductId:
+            state.selectedProductId === productId ? null : state.selectedProductId,
         }));
       },
 
       clearCart: () => set({ items: [], selectedProductId: null }),
 
+      // Total amount calculation using integer cents accumulation to prevent float drift
       getTotalAmount: () => {
-        return get().items.reduce((total, item) => total + item.subtotal, 0);
+        const totalCents = get().items.reduce((accum, item) => {
+          return accum + Math.round(item.subtotal * 100);
+        }, 0);
+        return totalCents / 100;
+      },
+
+      // Sum of all decimal quantities (e.g. 1.5 + 2.5 = 4)
+      getTotalQuantity: () => {
+        const totalQty = get().items.reduce((accum, item) => accum + item.cart_quantity, 0);
+        return round2(totalQty);
       },
 
       getTotalItemsCount: () => {
@@ -120,7 +164,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: 'buildpos-cart-storage', // Saves cart to localStorage
+      name: 'buildpos-cart-storage',
     }
   )
 );

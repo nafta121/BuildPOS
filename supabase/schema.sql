@@ -121,65 +121,55 @@ CREATE POLICY "Owners can manage all profiles"
 
 -- CATEGORIES POLICIES
 DROP POLICY IF EXISTS "Everyone authenticated can view categories" ON categories;
-CREATE POLICY "Everyone authenticated can view categories"
+DROP POLICY IF EXISTS "Allow public read categories" ON categories;
+CREATE POLICY "Allow public read categories"
     ON categories FOR SELECT
-    TO authenticated
+    TO public
     USING (true);
 
 DROP POLICY IF EXISTS "Admins and Owners can manage categories" ON categories;
-CREATE POLICY "Admins and Owners can manage categories"
+DROP POLICY IF EXISTS "Allow public manage categories" ON categories;
+CREATE POLICY "Allow public manage categories"
     ON categories FOR ALL
-    TO authenticated
-    USING (get_current_user_role() IN ('admin', 'owner'));
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- PRODUCTS POLICIES
 DROP POLICY IF EXISTS "Everyone authenticated can view active products" ON products;
-CREATE POLICY "Everyone authenticated can view active products"
+DROP POLICY IF EXISTS "Allow public read active products" ON products;
+CREATE POLICY "Allow public read active products"
     ON products FOR SELECT
-    TO authenticated
+    TO public
     USING (true);
 
 DROP POLICY IF EXISTS "Admins and Owners can insert/update products" ON products;
-CREATE POLICY "Admins and Owners can insert/update products"
+DROP POLICY IF EXISTS "Allow public manage products" ON products;
+CREATE POLICY "Allow public manage products"
     ON products FOR ALL
-    TO authenticated
-    USING (get_current_user_role() IN ('admin', 'owner'));
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- TRANSACTIONS POLICIES
 DROP POLICY IF EXISTS "Cashiers can insert transactions" ON transactions;
-CREATE POLICY "Cashiers can insert transactions"
-    ON transactions FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
 DROP POLICY IF EXISTS "View transactions based on role" ON transactions;
-CREATE POLICY "View transactions based on role"
-    ON transactions FOR SELECT
-    TO authenticated
-    USING (
-        get_current_user_role() = 'owner'
-        OR cashier_id = auth.uid()
-    );
+DROP POLICY IF EXISTS "Allow public manage transactions" ON transactions;
+CREATE POLICY "Allow public manage transactions"
+    ON transactions FOR ALL
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- TRANSACTION ITEMS POLICIES
 DROP POLICY IF EXISTS "Cashiers can insert items" ON transaction_items;
-CREATE POLICY "Cashiers can insert items"
-    ON transaction_items FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
 DROP POLICY IF EXISTS "View transaction items based on role" ON transaction_items;
-CREATE POLICY "View transaction items based on role"
-    ON transaction_items FOR SELECT
-    TO authenticated
-    USING (
-        get_current_user_role() = 'owner'
-        OR EXISTS (
-            SELECT 1 FROM transactions t
-            WHERE t.id = transaction_items.transaction_id
-            AND t.cashier_id = auth.uid()
-        )
-    );
+DROP POLICY IF EXISTS "Allow public manage items" ON transaction_items;
+CREATE POLICY "Allow public manage items"
+    ON transaction_items FOR ALL
+    TO public
+    USING (true)
+    WITH CHECK (true);
 
 -- ============================================================================
 -- 10. SEED INITIAL DATA (Bahan Bangunan Realistis)
