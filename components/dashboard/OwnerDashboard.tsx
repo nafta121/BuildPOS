@@ -1,7 +1,7 @@
 // components/dashboard/OwnerDashboard.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
@@ -17,9 +17,7 @@ import {
   ShieldAlert, 
   RefreshCw,
   Award,
-  Calendar,
-  Layers,
-  Clock
+  Calendar
 } from 'lucide-react';
 
 export const OwnerDashboard: React.FC = () => {
@@ -78,6 +76,48 @@ export const OwnerDashboard: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProfile?.role, dateFilter]);
 
+  // OPTIMASI: Seluruh metrik agregasi makro diambil langsung dari payload Supabase RPC
+  // dan di-cache dengan useMemo agar tidak dihitung ulang saat re-render
+  const { profitMarginPercent, averageTransactionValue } = useMemo(() => {
+    if (!analytics?.summary) {
+      return { profitMarginPercent: '0', averageTransactionValue: 0 };
+    }
+    const { total_revenue, total_profit } = analytics.summary;
+    const margin = total_revenue > 0 ? ((total_profit / total_revenue) * 100).toFixed(1) : '0';
+    const avg = transactions.length > 0 ? Math.round(total_revenue / transactions.length) : 0;
+    return { profitMarginPercent: margin, averageTransactionValue: avg };
+  }, [analytics, transactions.length]);
+
+  // OPTIMASI: Ekstrak iterasi berat rincian item per transaksi dari dalam blok return/JSX
+  // Hasil komputasi di-memoize dan hanya diperbarui jika data `transactions` berubah
+  const memoizedTransactionRows = useMemo(() => {
+    return transactions.map((tx) => {
+      let txCost = 0;
+      const items = tx.items || [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        txCost += (it.cost_price_at_sale || 0) * (it.quantity || 0);
+      }
+
+      const txProfit = tx.total_amount - txCost;
+      const txMargin = tx.total_amount > 0 ? ((txProfit / tx.total_amount) * 100).toFixed(1) : '0';
+
+      return {
+        id: tx.id,
+        invoice_no: tx.invoice_no,
+        formattedTime: new Date(tx.created_at).toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        cashierName: tx.cashier?.full_name || 'Kasir',
+        totalAmount: tx.total_amount,
+        txCost: Math.round(txCost),
+        txProfit: Math.round(txProfit),
+        txMargin,
+      };
+    });
+  }, [transactions]);
+
   if (!isOwner) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-950">
@@ -95,14 +135,6 @@ export const OwnerDashboard: React.FC = () => {
       </div>
     );
   }
-
-  const profitMarginPercent = analytics?.summary.total_revenue && analytics.summary.total_revenue > 0
-    ? ((analytics.summary.total_profit / analytics.summary.total_revenue) * 100).toFixed(1)
-    : '0';
-
-  const averageTransactionValue = transactions.length > 0 && analytics
-    ? Math.round(analytics.summary.total_revenue / transactions.length)
-    : 0;
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto">
@@ -182,7 +214,7 @@ export const OwnerDashboard: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 flex-1 space-y-6">
-        {/* KPI Cards Row */}
+        {/* KPI Cards Row - Bersumber langsung dari RPC get_dashboard_analytics */}
         {analytics ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Omzet */}
@@ -272,7 +304,7 @@ export const OwnerDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Top Products by Profit & Volume */}
+        {/* Top Products by Profit & Volume - Bersumber langsung dari RPC get_dashboard_analytics */}
         {analytics && analytics.top_products && analytics.top_products.length > 0 && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
             <div className="flex items-center gap-2 mb-4">
@@ -321,7 +353,7 @@ export const OwnerDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Historical Profit Breakdown Table */}
+        {/* Historical Profit Breakdown Table - Menggunakan memoizedTransactionRows */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
           <h2 className="text-base font-bold text-white mb-3 flex items-center gap-2">
             <Calendar className="w-5 h-5 text-blue-400" />
@@ -342,52 +374,40 @@ export const OwnerDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
-                {transactions.length === 0 ? (
+                {memoizedTransactionRows.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
                       Tidak ada transaksi pada periode ini.
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((tx) => {
-                    let txCost = 0;
-                    for (const it of tx.items || []) {
-                      txCost += it.cost_price_at_sale * it.quantity;
-                    }
-                    const txProfit = tx.total_amount - txCost;
-                    const txMargin = tx.total_amount > 0 ? ((txProfit / tx.total_amount) * 100).toFixed(1) : '0';
-
-                    return (
-                      <tr key={tx.id} className="hover:bg-slate-850/50 transition">
-                        <td className="py-3 px-3 font-mono font-bold text-white text-xs">
-                          {tx.invoice_no}
-                        </td>
-                        <td className="py-3 px-3 text-xs text-slate-400">
-                          {new Date(tx.created_at).toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </td>
-                        <td className="py-3 px-3 text-xs text-slate-300">
-                          {tx.cashier?.full_name || 'Kasir'}
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-xs text-white">
-                          Rp {tx.total_amount.toLocaleString('id-ID')}
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
-                          Rp {Math.round(txCost).toLocaleString('id-ID')}
-                        </td>
-                        <td className="py-3 px-3 text-right font-mono text-xs font-bold text-emerald-400">
-                          Rp {Math.round(txProfit).toLocaleString('id-ID')}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
-                            {txMargin}%
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  memoizedTransactionRows.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-850/50 transition">
+                      <td className="py-3 px-3 font-mono font-bold text-white text-xs">
+                        {tx.invoice_no}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-slate-400">
+                        {tx.formattedTime}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-slate-300">
+                        {tx.cashierName}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-xs text-white">
+                        Rp {tx.totalAmount.toLocaleString('id-ID')}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-xs text-slate-400">
+                        Rp {tx.txCost.toLocaleString('id-ID')}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-xs font-bold text-emerald-400">
+                        Rp {tx.txProfit.toLocaleString('id-ID')}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full">
+                          {tx.txMargin}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
