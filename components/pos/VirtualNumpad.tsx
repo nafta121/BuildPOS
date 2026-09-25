@@ -104,6 +104,11 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
             <button
               key={preset}
               type="button"
+              aria-label={
+                mode === 'currency'
+                  ? `Atur nilai ${preset.toLocaleString('id-ID')} rupiah`
+                  : `Tambah ${preset} ${unit}`.trim()
+              }
               onClick={() => {
                 if (onPresetClick) {
                   onPresetClick(preset);
@@ -115,7 +120,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
                   onChange(preset.toString());
                 }
               }}
-              className="py-2 px-1 text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 active:scale-95 transition-all shadow-sm"
+              className="py-2 px-1 text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 active:scale-95 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
             >
               {label}
             </button>
@@ -129,8 +134,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
           <button
             key={digit}
             type="button"
+            aria-label={`Angka ${digit}`}
             onClick={() => handleDigit(digit)}
-            className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-white active:text-white text-xl sm:text-2xl font-bold rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center"
+            className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-white active:text-white text-xl sm:text-2xl font-bold rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
           >
             {digit}
           </button>
@@ -139,8 +145,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
         {/* Decimal Point Button (CRITICAL for Toko Bangunan pecahan) */}
         <button
           type="button"
+          aria-label="Titik desimal"
           onClick={() => handleDigit('.')}
-          className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-400 text-2xl font-black rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center"
+          className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-400 text-2xl font-black rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
           title="Titik Desimal"
         >
           .
@@ -149,8 +156,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
         {/* Zero */}
         <button
           type="button"
+          aria-label="Angka 0"
           onClick={() => handleDigit('0')}
-          className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-white text-xl sm:text-2xl font-bold rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center"
+          className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-white text-xl sm:text-2xl font-bold rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
         >
           0
         </button>
@@ -158,8 +166,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
         {/* Backspace */}
         <button
           type="button"
+          aria-label="Hapus satu karakter"
           onClick={handleBackspace}
-          className="h-12 sm:h-14 bg-rose-950/60 hover:bg-rose-900 active:bg-rose-700 text-rose-300 text-lg font-bold rounded-lg border border-rose-800/50 shadow-sm active:scale-95 transition-all flex items-center justify-center"
+          className="h-12 sm:h-14 bg-rose-950/60 hover:bg-rose-900 active:bg-rose-700 text-rose-300 text-lg font-bold rounded-lg border border-rose-800/50 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
           title="Hapus Satu Karakter"
         >
           <Delete className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -170,8 +179,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
       <div className="grid grid-cols-2 gap-2 sm:gap-2.5 mt-2.5">
         <button
           type="button"
+          aria-label="Reset input numpad"
           onClick={handleReset}
-          className="h-11 sm:h-12 bg-slate-800 hover:bg-rose-900/70 text-slate-300 hover:text-white font-bold rounded-lg border border-slate-700 active:scale-95 transition flex items-center justify-center gap-1.5 text-sm"
+          className="h-11 sm:h-12 bg-slate-800 hover:bg-rose-900/70 text-slate-300 hover:text-white font-bold rounded-lg border border-slate-700 active:scale-95 transition flex items-center justify-center gap-1.5 text-sm focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
         >
           <RotateCcw className="w-4 h-4" />
           <span>Reset / C</span>
@@ -179,8 +189,9 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
 
         <button
           type="button"
+          aria-label="Selesai input numpad"
           onClick={onEnter}
-          className="h-11 sm:h-12 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-lg shadow-lg active:scale-95 transition flex items-center justify-center gap-1.5 text-sm"
+          className="h-11 sm:h-12 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-lg shadow-lg active:scale-95 transition flex items-center justify-center gap-1.5 text-sm focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
         >
           <Check className="w-5 h-5" />
           <span>Selesai (OK)</span>

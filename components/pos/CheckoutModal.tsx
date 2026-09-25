@@ -112,7 +112,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+            aria-label="Tutup modal pembayaran"
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -141,11 +142,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
+                  aria-pressed={paymentMethod === 'tunai'}
                   onClick={() => {
                     setPaymentMethod('tunai');
                     setAmountPaidStr(totalAmount.toString());
                   }}
-                  className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition ${
+                  className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                     paymentMethod === 'tunai'
                       ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30'
                       : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
@@ -157,11 +159,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                 <button
                   type="button"
+                  aria-pressed={paymentMethod === 'transfer'}
                   onClick={() => {
                     setPaymentMethod('transfer');
                     setAmountPaidStr(totalAmount.toString());
                   }}
-                  className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition ${
+                  className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
                     paymentMethod === 'transfer'
                       ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/30'
                       : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
@@ -184,8 +187,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <button
                       key={idx}
                       type="button"
+                      aria-label={`Uang ${sug.label}`}
                       onClick={() => setAmountPaidStr(sug.value.toString())}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-xs sm:text-sm font-bold text-amber-300 hover:text-white rounded-lg border border-slate-700 transition"
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-xs sm:text-sm font-bold text-amber-300 hover:text-white rounded-lg border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                     >
                       {sug.label}
                     </button>
@@ -255,7 +259,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-5 py-3 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-bold text-sm transition"
+            aria-label="Batal pembayaran"
+            className="px-5 py-3 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 font-bold text-sm transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
           >
             Batal
           </button>
@@ -264,7 +269,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             type="button"
             onClick={handleCheckout}
             disabled={isSubmitting || (!isSufficient && paymentMethod === 'tunai')}
-            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-base rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+            className="flex-1 py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-base rounded-xl shadow-lg transition flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
           >
             {isSubmitting ? (
               <>

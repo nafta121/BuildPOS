@@ -151,6 +151,7 @@ export const PosView: React.FC = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
+              aria-label="Cari produk"
               placeholder="Cari semen, pasir, kabel, pipa, paku..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -159,7 +160,8 @@ export const PosView: React.FC = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                aria-label="Bersihkan pencarian"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -187,7 +189,8 @@ export const PosView: React.FC = () => {
 
             <button
               onClick={loadData}
-              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-2 text-sm font-semibold"
+              aria-label="Perbarui data produk"
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-xl border border-slate-700 text-slate-300 hover:text-white transition flex items-center gap-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
               title="Perbarui Data Produk"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -200,7 +203,8 @@ export const PosView: React.FC = () => {
         <div className="flex items-center gap-2 overflow-x-auto pt-3 pb-1 scrollbar-none max-w-7xl mx-auto w-full">
           <button
             onClick={() => setSelectedCategoryId('all')}
-            className={`px-4 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap border transition-all ${
+            aria-pressed={selectedCategoryId === 'all'}
+            className={`px-4 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap border transition-all focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
               selectedCategoryId === 'all'
                 ? 'bg-emerald-600 border-emerald-500 text-white shadow-md'
                 : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -214,7 +218,8 @@ export const PosView: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategoryId(cat.id)}
-                className={`px-4 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap border transition-all ${
+                aria-pressed={selectedCategoryId === cat.id}
+                className={`px-4 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap border transition-all focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                   selectedCategoryId === cat.id
                     ? 'bg-emerald-600 border-emerald-500 text-white shadow-md'
                     : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -309,24 +314,27 @@ export const PosView: React.FC = () => {
                         <div className="grid grid-cols-3 gap-1 pt-1">
                           <button
                             type="button"
+                            aria-label={`Tambah 0.5 ${product.unit} ${product.name}`}
                             onClick={(e) => handleQuickAddFraction(product, 0.5, e)}
-                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 transition"
+                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                             title="Tambah 0.5"
                           >
                             +0.5
                           </button>
                           <button
                             type="button"
+                            aria-label={`Tambah 1 ${product.unit} ${product.name}`}
                             onClick={(e) => handleQuickAddFraction(product, 1, e)}
-                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition"
+                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                             title="Tambah 1"
                           >
                             +1
                           </button>
                           <button
                             type="button"
+                            aria-label={`Tambah 5 ${product.unit} ${product.name}`}
                             onClick={(e) => handleQuickAddFraction(product, 5, e)}
-                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition"
+                            className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                             title="Tambah 5"
                           >
                             +5
@@ -365,7 +373,8 @@ export const PosView: React.FC = () => {
             {cartItems.length > 0 && (
               <button
                 onClick={clearCart}
-                className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold p-1 hover:bg-rose-950/30 rounded"
+                aria-label="Kosongkan keranjang"
+                className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold p-1 hover:bg-rose-950/30 rounded focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Kosongkan</span>
@@ -408,7 +417,8 @@ export const PosView: React.FC = () => {
                           e.stopPropagation();
                           removeItem(item.id);
                         }}
-                        className="text-slate-500 hover:text-rose-400 p-1"
+                        aria-label={`Hapus ${item.name} dari keranjang`}
+                        className="text-slate-500 hover:text-rose-400 p-1 rounded focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none"
                         title="Hapus Item"
                       >
                         <Trash2 className="w-4 h-4" />
