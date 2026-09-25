@@ -61,6 +61,8 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
           throw new Error(prodErr?.message || 'Gagal memuat produk dari database Supabase.');
         }
 
+        const productMap = new Map(dbProducts.map((p) => [p.id, p]));
+
         let calculatedTotal = 0;
         const lineItemsToInsert: Array<{
           product_id: string;
@@ -74,7 +76,7 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
 
         // Validate each item against database stock and calculate subtotal
         for (const item of items) {
-          const product = dbProducts.find((p) => p.id === item.productId);
+          const product = productMap.get(item.productId);
           if (!product) {
             return { success: false, error: `Produk ID ${item.productId} tidak ditemukan di database.` };
           }
@@ -157,8 +159,9 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
         }
 
         // 4. Build response object with role-based security masking
+        const lineItemDetailMap = new Map(lineItemsToInsert.map((li) => [li.product_id, li]));
         const safeItems: TransactionItem[] = (insertedItems || []).map((it) => {
-          const detail = lineItemsToInsert.find((li) => li.product_id === it.product_id);
+          const detail = lineItemDetailMap.get(it.product_id);
           return {
             id: it.id,
             transaction_id: it.transaction_id,
@@ -205,11 +208,12 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
     }
 
     // Local / In-Memory Store Simulation Fallback
+    const storeProductMap = new Map(dbStore.products.map((p) => [p.id, p]));
     let calculatedTotal = 0;
     const lineItems: TransactionItem[] = [];
 
     for (const item of items) {
-      const product = dbStore.products.find((p) => p.id === item.productId);
+      const product = storeProductMap.get(item.productId);
       if (!product) {
         return { success: false, error: `Produk ID ${item.productId} tidak ditemukan.` };
       }
