@@ -57,7 +57,7 @@ export const PosView: React.FC = () => {
     setIsLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        getProductsAction(currentProfile.role),
+        getProductsAction(currentProfile?.role || 'kasir'),
         getCategoriesAction(),
       ]);
 
@@ -73,7 +73,7 @@ export const PosView: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile.role]);
+  }, [currentProfile?.role]);
 
   // Filtered products list
   const filteredProducts = useMemo(() => {

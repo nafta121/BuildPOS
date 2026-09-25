@@ -57,8 +57,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const finalAmountPaid = paymentMethod === 'transfer' ? totalAmount : amountPaidNum;
 
       const result = await checkoutAction({
-        cashierId: currentProfile.id,
-        cashierRole: currentProfile.role,
+        cashierId: currentProfile?.id || '',
+        cashierRole: currentProfile?.role || 'kasir',
         paymentMethod,
         amountPaid: finalAmountPaid,
         items: items.map((i) => ({
@@ -95,7 +95,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div>
               <h2 className="text-lg font-bold text-white">Pembayaran Kasir</h2>
               <p className="text-xs text-slate-400">
-                Kasir: {currentProfile.full_name} ({currentProfile.role.toUpperCase()})
+                Kasir: {currentProfile?.full_name || 'Kasir'} ({currentProfile?.role?.toUpperCase() || 'KASIR'})
               </p>
             </div>
           </div>

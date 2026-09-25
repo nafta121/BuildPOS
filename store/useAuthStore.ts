@@ -5,7 +5,10 @@ import { Profile, Role } from '@/types/database';
 import { INITIAL_PROFILES } from '@/lib/mock-data';
 
 interface AuthState {
-  currentProfile: Profile;
+  isAuthenticated: boolean;
+  currentProfile: Profile | null;
+  login: (profile: Profile) => void;
+  logout: () => void;
   setProfile: (profile: Profile) => void;
   setRole: (role: Role) => void;
   availableProfiles: Profile[];
@@ -14,13 +17,30 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      currentProfile: INITIAL_PROFILES[0], // Defaults to Kasir
+      isAuthenticated: false,
+      currentProfile: null,
       availableProfiles: INITIAL_PROFILES,
-      setProfile: (profile) => set({ currentProfile: profile }),
+      
+      login: (profile: Profile) => {
+        set({
+          isAuthenticated: true,
+          currentProfile: profile,
+        });
+      },
+
+      logout: () => {
+        set({
+          isAuthenticated: false,
+          currentProfile: null,
+        });
+      },
+
+      setProfile: (profile) => set({ currentProfile: profile, isAuthenticated: true }),
+      
       setRole: (role) => {
         const found = INITIAL_PROFILES.find((p) => p.role === role);
         if (found) {
-          set({ currentProfile: found });
+          set({ currentProfile: found, isAuthenticated: true });
         }
       },
     }),

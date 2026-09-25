@@ -28,7 +28,7 @@ export const TransactionHistoryView: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await getTransactionsAction(currentProfile.role, currentProfile.id);
+      const res = await getTransactionsAction(currentProfile?.role || 'kasir', currentProfile?.id);
       if (res.success) {
         setTransactions(res.data);
       }
@@ -42,7 +42,7 @@ export const TransactionHistoryView: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile.role]);
+  }, [currentProfile?.role, currentProfile?.id]);
 
   const filteredTransactions = transactions.filter((t) =>
     t.invoice_no.toLowerCase().includes(searchQuery.toLowerCase())

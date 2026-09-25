@@ -4,6 +4,7 @@
 import React from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCartStore } from '@/store/useCartStore';
+import { signOutAction } from '@/app/actions/auth';
 import { Role } from '@/types/database';
 import { 
   Hammer, 
@@ -11,12 +12,11 @@ import {
   Receipt, 
   Package, 
   TrendingUp, 
-  Database, 
   UserCircle2, 
-  ChevronDown 
+  LogOut 
 } from 'lucide-react';
 
-export type ActiveTab = 'pos' | 'history' | 'inventory' | 'owner' | 'setup';
+export type ActiveTab = 'pos' | 'history' | 'inventory' | 'owner';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -24,24 +24,19 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
-  const { currentProfile, availableProfiles, setProfile } = useAuthStore();
-  const { getTotalItemsCount } = useCartStore();
+  const { currentProfile, logout } = useAuthStore();
 
-  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedId = e.target.value;
-    const found = availableProfiles.find((p) => p.id === selectedId);
-    if (found) {
-      setProfile(found);
-      // If cashier tries to stay on owner dashboard or inventory, redirect to POS
-      if (found.role === 'kasir' && (activeTab === 'owner' || activeTab === 'inventory')) {
-        setActiveTab('pos');
-      } else if (found.role === 'admin' && activeTab === 'owner') {
-        setActiveTab('inventory');
-      }
+  const handleLogout = async () => {
+    try {
+      await signOutAction();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      logout();
     }
   };
 
-  const getRoleBadgeStyle = (role: Role) => {
+  const getRoleBadgeStyle = (role?: Role) => {
     switch (role) {
       case 'owner':
         return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
@@ -52,6 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
     }
   };
+
+  const isOwner = currentProfile?.role === 'owner';
+  const isAdminOrOwner = currentProfile?.role === 'admin' || currentProfile?.role === 'owner';
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40">
@@ -78,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         <nav className="hidden md:flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab('pos')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
               activeTab === 'pos'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -90,7 +88,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
               activeTab === 'history'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -100,11 +98,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             <span>Riwayat Nota</span>
           </button>
 
-          {/* Gudang tab (admin/owner only) */}
-          {(currentProfile.role === 'admin' || currentProfile.role === 'owner') && (
+          {/* Gudang & Stok tab (admin & owner only) */}
+          {isAdminOrOwner && (
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 activeTab === 'inventory'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -116,10 +114,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           )}
 
           {/* Owner Dashboard tab (owner only) */}
-          {currentProfile.role === 'owner' && (
+          {isOwner && (
             <button
               onClick={() => setActiveTab('owner')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
                 activeTab === 'owner'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -129,50 +127,37 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
               <span>Dashboard Laba</span>
             </button>
           )}
-
-          <button
-            onClick={() => setActiveTab('setup')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'setup'
-                ? 'bg-slate-800 text-emerald-400 shadow-md border border-slate-700'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
-          >
-            <Database className="w-4 h-4" />
-            <span>SQL Setup</span>
-          </button>
         </nav>
 
-        {/* User Role Switcher Dropdown (Crucial for RBAC testing & cashier ergonomics) */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex items-center bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5">
-            <UserCircle2 className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+        {/* User Info & Logout Button */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center bg-slate-950 border border-slate-700/80 rounded-xl px-2.5 sm:px-3 py-1.5 gap-2">
+            <UserCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
             <div className="flex flex-col text-left">
-              <span className="text-[10px] uppercase font-bold text-slate-400 leading-tight">
-                Role Akses:
+              <span className="text-xs font-bold text-white leading-tight max-w-[120px] sm:max-w-[160px] truncate">
+                {currentProfile?.full_name || 'Pengguna'}
               </span>
-              <select
-                value={currentProfile.id}
-                onChange={handleRoleChange}
-                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer pr-4 appearance-none"
-              >
-                {availableProfiles.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-slate-900 text-white">
-                    {p.full_name} ({p.role.toUpperCase()})
-                  </option>
-                ))}
-              </select>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                {currentProfile?.role}
+              </span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
+            <span
+              className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border hidden sm:inline-block ${getRoleBadgeStyle(
+                currentProfile?.role
+              )}`}
+            >
+              {currentProfile?.role}
+            </span>
           </div>
 
-          <span
-            className={`text-[10px] font-black uppercase px-2 py-1 rounded-md border hidden lg:inline-block ${getRoleBadgeStyle(
-              currentProfile.role
-            )}`}
+          <button
+            onClick={handleLogout}
+            className="p-2 sm:px-3 sm:py-2 bg-slate-950 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold"
+            title="Keluar dari Akun"
           >
-            {currentProfile.role}
-          </span>
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Keluar</span>
+          </button>
         </div>
       </div>
     </header>

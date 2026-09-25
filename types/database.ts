@@ -9,6 +9,7 @@ export interface Profile {
   full_name: string;
   role: Role;
   created_at: string;
+  email?: string;
 }
 
 export interface Category {

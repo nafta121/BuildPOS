@@ -24,12 +24,12 @@ export const OwnerDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<FinancialAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isOwner = currentProfile.role === 'owner';
+  const isOwner = currentProfile?.role === 'owner';
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await getTransactionsAction(currentProfile.role);
+      const res = await getTransactionsAction(currentProfile?.role || 'kasir');
       if (res.success) {
         setTransactions(res.data);
         if (res.analytics) {
@@ -46,7 +46,7 @@ export const OwnerDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile.role]);
+  }, [currentProfile?.role]);
 
   if (!isOwner) {
     return (
@@ -55,7 +55,7 @@ export const OwnerDashboard: React.FC = () => {
           <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto mb-3" />
           <h2 className="text-xl font-bold mb-2">Akses Ditolak: Dashboard Finansial Khusus Owner</h2>
           <p className="text-xs text-slate-300">
-            Role saat ini: <strong>{currentProfile.role.toUpperCase()}</strong> ({currentProfile.full_name}).
+            Role saat ini: <strong>{currentProfile?.role?.toUpperCase() || 'KASIR'}</strong> ({currentProfile?.full_name || 'Pengguna'}).
             Data laba bersih, omzet, dan margin keuntungan hanya dapat diakses oleh akun Owner.
           </p>
           <p className="text-xs text-amber-400 mt-4">

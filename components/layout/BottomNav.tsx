@@ -8,8 +8,7 @@ import {
   ShoppingCart, 
   Receipt, 
   Package, 
-  TrendingUp, 
-  Database 
+  TrendingUp 
 } from 'lucide-react';
 
 interface BottomNavProps {
@@ -20,8 +19,8 @@ interface BottomNavProps {
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab }) => {
   const { currentProfile } = useAuthStore();
 
-  const isOwner = currentProfile.role === 'owner';
-  const isAdminOrOwner = currentProfile.role === 'admin' || currentProfile.role === 'owner';
+  const isOwner = currentProfile?.role === 'owner';
+  const isAdminOrOwner = currentProfile?.role === 'admin' || currentProfile?.role === 'owner';
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900 border-t border-slate-800 text-white flex items-center justify-around h-16 px-1 safe-area-bottom">
@@ -68,16 +67,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
           <span className="text-[10px]">Laba</span>
         </button>
       )}
-
-      <button
-        onClick={() => setActiveTab('setup')}
-        className={`flex flex-col items-center justify-center flex-1 h-full py-1 ${
-          activeTab === 'setup' ? 'text-emerald-400 font-bold' : 'text-slate-400'
-        }`}
-      >
-        <Database className="w-5 h-5 mb-0.5" />
-        <span className="text-[10px]">SQL</span>
-      </button>
     </div>
   );
 };

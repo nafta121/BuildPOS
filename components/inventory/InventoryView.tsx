@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Product, Category } from '@/types/database';
+import { Product, Category, Role } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
   getProductsAction, 
@@ -61,14 +61,15 @@ export const InventoryView: React.FC = () => {
     is_active: true,
   });
 
-  const canEdit = currentProfile.role === 'admin' || currentProfile.role === 'owner';
-  const canSeeCostPrice = currentProfile.role === 'admin' || currentProfile.role === 'owner';
+  const userRole: Role = currentProfile?.role || 'kasir';
+  const canEdit = userRole === 'admin' || userRole === 'owner';
+  const canSeeCostPrice = userRole === 'admin' || userRole === 'owner';
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        getProductsAction(currentProfile.role),
+        getProductsAction(userRole),
         getCategoriesAction(),
       ]);
       if (prodRes.success) setProducts(prodRes.data);
@@ -88,7 +89,7 @@ export const InventoryView: React.FC = () => {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile.role]);
+  }, [userRole]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -153,7 +154,7 @@ export const InventoryView: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await saveProductAction(formData, currentProfile.role);
+      const res = await saveProductAction(formData, userRole);
       if (!res.success) {
         setFormError(res.error || 'Gagal menyimpan produk.');
         setIsSubmitting(false);
@@ -180,7 +181,7 @@ export const InventoryView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await adjustStockAction(stockAdjustProduct.id, stockNum, currentProfile.role);
+      const res = await adjustStockAction(stockAdjustProduct.id, stockNum, userRole);
       if (!res.success) {
         setFormError(res.error || 'Gagal mengubah stok.');
         setIsSubmitting(false);
@@ -202,7 +203,7 @@ export const InventoryView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await saveCategoryAction(newCategoryName, currentProfile.role);
+      const res = await saveCategoryAction(newCategoryName, userRole);
       if (!res.success) {
         setFormError(res.error || 'Gagal menyimpan kategori.');
         setIsSubmitting(false);
@@ -226,7 +227,7 @@ export const InventoryView: React.FC = () => {
           <ShieldAlert className="w-12 h-12 text-amber-400 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-white mb-2">Akses Terbatas: Hanya Admin / Owner</h2>
           <p className="text-sm text-slate-300">
-            Anda login sebagai <strong>{currentProfile.full_name}</strong> dengan role <strong>{currentProfile.role.toUpperCase()}</strong>.
+            Anda login sebagai <strong>{currentProfile?.full_name || 'Pengguna'}</strong> dengan role <strong>{userRole.toUpperCase()}</strong>.
             Kasir hanya diizinkan untuk melayani transaksi kasir dan cetak nota.
           </p>
           <p className="text-xs text-amber-400 mt-4">
