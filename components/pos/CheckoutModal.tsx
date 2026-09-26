@@ -1,7 +1,7 @@
 // components/pos/CheckoutModal.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { checkoutAction } from '@/app/actions/pos';
@@ -9,40 +9,51 @@ import { PaymentMethod, Transaction } from '@/types/database';
 import { VirtualNumpad } from './VirtualNumpad';
 import { Check, X, CreditCard, Banknote, AlertCircle, Loader2 } from 'lucide-react';
 
-interface CheckoutModalProps {
+export interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (transaction: Transaction) => void;
+  totalAmount?: number;
+  onSuccess?: (transaction: Transaction) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
+  totalAmount: propTotalAmount,
   onSuccess,
 }) => {
   const { items, getTotalAmount, clearCart } = useCartStore();
   const { currentProfile } = useAuthStore();
 
-  const totalAmount = getTotalAmount();
+  const activeTotal = propTotalAmount !== undefined ? propTotalAmount : getTotalAmount();
+
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('tunai');
-  const [amountPaidStr, setAmountPaidStr] = useState<string>(totalAmount.toString());
+  const [amountPaidStr, setAmountPaidStr] = useState<string>(activeTotal.toString());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Sinkronkan nominal uang default saat modal dibuka atau total berubah
+  useEffect(() => {
+    if (isOpen) {
+      setAmountPaidStr(activeTotal.toString());
+      setErrorMessage(null);
+    }
+  }, [isOpen, activeTotal]);
 
   if (!isOpen) return null;
 
   const amountPaidNum = parseFloat(amountPaidStr || '0');
-  const changeAmount = amountPaidNum - totalAmount;
-  const isSufficient = amountPaidNum >= totalAmount;
+  const changeAmount = amountPaidNum - activeTotal;
+  const isSufficient = amountPaidNum >= activeTotal;
 
-  // Preset cash values
+  // Saran uang tunai cepat (Fat-finger friendly)
   const cashSuggestions = [
-    { label: 'Uang Pas', value: totalAmount },
+    { label: 'Uang Pas', value: activeTotal },
     { label: 'Rp 50.000', value: 50000 },
     { label: 'Rp 100.000', value: 100000 },
     { label: 'Rp 200.000', value: 200000 },
     { label: 'Rp 500.000', value: 500000 },
-  ].filter((s) => s.value >= totalAmount || s.label === 'Uang Pas');
+  ].filter((s) => s.value >= activeTotal || s.label === 'Uang Pas');
 
   const handleCheckout = async () => {
     if (amountPaidNum < 0) {
@@ -64,7 +75,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const finalAmountPaid = paymentMethod === 'transfer' ? totalAmount : amountPaidNum;
+      const finalAmountPaid = paymentMethod === 'transfer' ? activeTotal : amountPaidNum;
 
       const result = await checkoutAction({
         cashierId: currentProfile?.id || '',
@@ -83,9 +94,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         return;
       }
 
-      // Success: clear cart and trigger receipt view
+      // Berhasil: kosongkan keranjang dan jalankan callback
       clearCart();
-      onSuccess(result.transaction);
+      if (onSuccess) {
+        onSuccess(result.transaction);
+      } else {
+        onClose();
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Koneksi checkout gagal.';
       setErrorMessage(msg);
@@ -127,7 +142,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
               <span className="text-xs text-slate-400 uppercase font-semibold">Total Tagihan</span>
               <div className="text-3xl font-black text-emerald-400 tracking-tight mt-1 font-mono">
-                Rp {totalAmount.toLocaleString('id-ID')}
+                Rp {activeTotal.toLocaleString('id-ID')}
               </div>
               <p className="text-xs text-slate-400 mt-1">
                 {items.length} jenis barang ({items.reduce((acc, i) => acc + i.cart_quantity, 0)} total kuantitas)
@@ -145,7 +160,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   aria-pressed={paymentMethod === 'tunai'}
                   onClick={() => {
                     setPaymentMethod('tunai');
-                    setAmountPaidStr(totalAmount.toString());
+                    setAmountPaidStr(activeTotal.toString());
                   }}
                   className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                     paymentMethod === 'tunai'
@@ -162,7 +177,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   aria-pressed={paymentMethod === 'transfer'}
                   onClick={() => {
                     setPaymentMethod('transfer');
-                    setAmountPaidStr(totalAmount.toString());
+                    setAmountPaidStr(activeTotal.toString());
                   }}
                   className={`p-3 rounded-xl border font-bold flex items-center justify-center gap-2 transition focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none ${
                     paymentMethod === 'transfer'
@@ -241,7 +256,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <h3 className="font-bold text-white text-base">Pembayaran Non-Tunai / Transfer</h3>
                 <p className="text-xs text-slate-400 max-w-xs">
                   Pastikan dana transfer / QRIS sebesar{' '}
-                  <strong className="text-emerald-400">Rp {totalAmount.toLocaleString('id-ID')}</strong>{' '}
+                  <strong className="text-emerald-400">Rp {activeTotal.toLocaleString('id-ID')}</strong>{' '}
                   telah masuk ke rekening toko.
                 </p>
                 <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-300 w-full text-left">
@@ -282,7 +297,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>
                   {paymentMethod === 'tunai'
                     ? `Konfirmasi Bayar & Cetak Nota`
-                    : `Selesaikan Transfer (Rp ${totalAmount.toLocaleString('id-ID')})`}
+                    : `Selesaikan Transfer (Rp ${activeTotal.toLocaleString('id-ID')})`}
                 </span>
               </>
             )}

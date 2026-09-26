@@ -1,7 +1,7 @@
 // components/dashboard/OwnerDashboard.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Transaction } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
@@ -20,6 +20,23 @@ import {
   Calendar
 } from 'lucide-react';
 
+const getDateRange = (filter: 'all' | 'today' | '7days' | '30days') => {
+  const now = new Date();
+  if (filter === 'today') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }
+  if (filter === '7days') {
+    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }
+  if (filter === '30days') {
+    const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return { startDate: start.toISOString(), endDate: now.toISOString() };
+  }
+  return { startDate: null, endDate: null };
+};
+
 export const OwnerDashboard: React.FC = () => {
   const { currentProfile } = useAuthStore();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -27,32 +44,16 @@ export const OwnerDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
 
-  const isOwner = currentProfile?.role === 'owner';
+  const userRole = currentProfile?.role;
+  const isOwner = userRole === 'owner';
 
-  const getDateRange = (filter: 'all' | 'today' | '7days' | '30days') => {
-    const now = new Date();
-    if (filter === 'today') {
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      return { startDate: start.toISOString(), endDate: now.toISOString() };
-    }
-    if (filter === '7days') {
-      const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return { startDate: start.toISOString(), endDate: now.toISOString() };
-    }
-    if (filter === '30days') {
-      const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return { startDate: start.toISOString(), endDate: now.toISOString() };
-    }
-    return { startDate: null, endDate: null };
-  };
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const { startDate, endDate } = getDateRange(dateFilter);
 
       const [txRes, analyticsData] = await Promise.all([
-        getTransactionsAction(currentProfile?.role || 'kasir', undefined, startDate, endDate),
+        getTransactionsAction(userRole || 'kasir', undefined, startDate, endDate),
         isOwner ? getAnalytics(startDate, endDate) : Promise.resolve(null),
       ]);
 
@@ -69,12 +70,11 @@ export const OwnerDashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userRole, isOwner, dateFilter]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.role, dateFilter]);
+  }, [loadData]);
 
   // OPTIMASI: Seluruh metrik agregasi makro diambil langsung dari payload Supabase RPC
   // dan di-cache dengan useMemo agar tidak dihitung ulang saat re-render

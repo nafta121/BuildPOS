@@ -1,7 +1,7 @@
 // components/inventory/InventoryView.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Product, Category, Role } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
@@ -68,7 +68,7 @@ export const InventoryView: React.FC = () => {
   const canEdit = userRole === 'admin' || userRole === 'owner';
   const canSeeCostPrice = userRole === 'admin' || userRole === 'owner';
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
@@ -81,8 +81,8 @@ export const InventoryView: React.FC = () => {
       }
       if (catRes.success) {
         setCategories(catRes.data);
-        if (catRes.data.length > 0 && !formData.category_id) {
-          setFormData((prev) => ({ ...prev, category_id: catRes.data[0].id }));
+        if (catRes.data.length > 0) {
+          setFormData((prev) => (prev.category_id ? prev : { ...prev, category_id: catRes.data[0].id }));
         }
       }
     } catch (err) {
@@ -90,12 +90,11 @@ export const InventoryView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userRole]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole]);
+  }, [loadData]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {

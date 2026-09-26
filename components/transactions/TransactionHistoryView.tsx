@@ -1,7 +1,7 @@
 // components/transactions/TransactionHistoryView.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Transaction } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getTransactionsAction } from '@/app/actions/transactions';
@@ -25,10 +25,13 @@ export const TransactionHistoryView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeReceiptTx, setActiveReceiptTx] = useState<Transaction | null>(null);
 
-  const loadData = async () => {
+  const role = currentProfile?.role;
+  const cashierId = currentProfile?.id;
+
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await getTransactionsAction(currentProfile?.role || 'kasir', currentProfile?.id);
+      const res = await getTransactionsAction(role || 'kasir', cashierId);
       if (res.success) {
         setTransactions(res.data);
       }
@@ -37,12 +40,11 @@ export const TransactionHistoryView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [role, cashierId]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.role, currentProfile?.id]);
+  }, [loadData]);
 
   const filteredTransactions = transactions.filter((t) =>
     t.invoice_no.toLowerCase().includes(searchQuery.toLowerCase())

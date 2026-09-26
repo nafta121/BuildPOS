@@ -1,7 +1,7 @@
 // components/pos/PosView.tsx
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Product, Category, Transaction } from '@/types/database';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -16,13 +16,9 @@ import {
   Trash2, 
   Plus, 
   Minus, 
-  Check, 
   Package, 
-  Layers, 
   ArrowRight, 
   RefreshCw,
-  Calculator,
-  SlidersHorizontal,
   X
 } from 'lucide-react';
 
@@ -55,12 +51,14 @@ export const PosView: React.FC = () => {
   const [dataSource, setDataSource] = useState<'database' | 'local_fallback'>('local_fallback');
   const [isRlsModalOpen, setIsRlsModalOpen] = useState(false);
 
-  // Load products and categories
-  const loadData = async () => {
+  const userRole = currentProfile?.role;
+
+  // Load products and categories with stabilized reference
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        getProductsAction(currentProfile?.role || 'kasir'),
+        getProductsAction(userRole || 'kasir'),
         getCategoriesAction(),
       ]);
 
@@ -74,12 +72,11 @@ export const PosView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userRole]);
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.role]);
+  }, [loadData]);
 
   // Filtered products list
   const filteredProducts = useMemo(() => {

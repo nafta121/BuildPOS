@@ -4,11 +4,14 @@
 import React from 'react';
 import { Delete, Check, RotateCcw } from 'lucide-react';
 
-interface VirtualNumpadProps {
-  value: string;
-  onChange: (val: string) => void;
-  onEnter?: () => void;
+export interface VirtualNumpadProps {
+  value?: string;
+  onChange?: (val: string) => void;
+  onKeyPress?: (key: string) => void;
+  onDelete?: () => void;
   onClear?: () => void;
+  onEnter?: () => void;
+  disableDecimal?: boolean;
   title?: string;
   unit?: string;
   mode?: 'qty' | 'currency';
@@ -17,10 +20,13 @@ interface VirtualNumpadProps {
 }
 
 export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
-  value,
+  value = '',
   onChange,
-  onEnter,
+  onKeyPress,
+  onDelete,
   onClear,
+  onEnter,
+  disableDecimal = false,
   title = 'Numpad Virtual',
   unit = '',
   mode = 'qty',
@@ -28,7 +34,14 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
   onPresetClick,
 }) => {
   const handleDigit = (digit: string) => {
+    if (onKeyPress) {
+      onKeyPress(digit);
+    }
+
+    if (!onChange) return;
+
     if (digit === '.') {
+      if (disableDecimal) return;
       if (value.includes('.')) return; // Prevent multiple decimal points
       onChange(value === '' ? '0.' : value + '.');
       return;
@@ -42,22 +55,27 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
   };
 
   const handleBackspace = () => {
-    if (value.length <= 1) {
-      onChange('');
-    } else {
-      onChange(value.slice(0, -1));
+    if (onDelete) {
+      onDelete();
+    }
+    if (onChange) {
+      if (value.length <= 1) {
+        onChange('');
+      } else {
+        onChange(value.slice(0, -1));
+      }
     }
   };
 
   const handleReset = () => {
     if (onClear) {
       onClear();
-    } else {
+    } else if (onChange) {
       onChange('');
     }
   };
 
-  // Default quick presets for toko bangunan
+  // Preset default kuantitas pecahan (toko bangunan) & mata uang tunai
   const defaultQtyPresets = [0.5, 1, 2, 5, 10];
   const defaultCashPresets = [50000, 100000, 200000, 500000];
 
@@ -76,7 +94,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
           )}
         </div>
 
-        {/* Big Fat-Finger Display */}
+        {/* Fat-Finger Display */}
         <div className="bg-slate-950 border-2 border-emerald-500/40 rounded-lg p-2.5 sm:p-3 text-right">
           <div className="font-mono text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-wider overflow-x-auto whitespace-nowrap">
             {mode === 'currency' ? (
@@ -90,7 +108,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
         </div>
       </div>
 
-      {/* Quick Presets Row (Fat-finger friendly for field operations) */}
+      {/* Quick Presets Row (Fat-finger friendly untuk kondisi lapangan) */}
       <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 mb-2.5">
         {presetsToUse.map((preset) => {
           const label =
@@ -112,12 +130,14 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
               onClick={() => {
                 if (onPresetClick) {
                   onPresetClick(preset);
-                } else if (mode === 'qty') {
-                  const currentNum = parseFloat(value || '0');
-                  const nextNum = Number((currentNum + preset).toFixed(2));
-                  onChange(nextNum.toString());
-                } else {
-                  onChange(preset.toString());
+                } else if (onChange) {
+                  if (mode === 'qty') {
+                    const currentNum = parseFloat(value || '0');
+                    const nextNum = Number((currentNum + preset).toFixed(2));
+                    onChange(nextNum.toString());
+                  } else {
+                    onChange(preset.toString());
+                  }
                 }
               }}
               className="py-2 px-1 text-xs sm:text-sm font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 active:scale-95 transition-all shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
@@ -142,13 +162,16 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
           </button>
         ))}
 
-        {/* Decimal Point Button (CRITICAL for Toko Bangunan pecahan) */}
+        {/* Decimal Point Button (Pecahan material: 0.5 kubik, 1.5 meter) */}
         <button
           type="button"
           aria-label="Titik desimal"
+          disabled={disableDecimal}
           onClick={() => handleDigit('.')}
-          className="h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-400 text-2xl font-black rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-          title="Titik Desimal"
+          className={`h-12 sm:h-14 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-400 text-2xl font-black rounded-lg border border-slate-700 shadow-sm active:scale-95 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none ${
+            disableDecimal ? 'opacity-40 cursor-not-allowed' : ''
+          }`}
+          title={disableDecimal ? 'Desimal dinonaktifkan' : 'Titik Desimal'}
         >
           .
         </button>
