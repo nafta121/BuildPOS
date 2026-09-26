@@ -3,7 +3,7 @@
 
 import { createClient, isSupabaseConfigured } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
-import { dbStore } from '@/lib/db-store';
+import { dbStore, DbStore } from '@/lib/db-store';
 import { Product, Role, Category } from '@/types/database';
 
 export interface ProductFormData {

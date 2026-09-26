@@ -3,8 +3,9 @@
 
 import { createClient, isSupabaseConfigured } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
-import { dbStore } from '@/lib/db-store';
+import { dbStore, DbStore } from '@/lib/db-store';
 import { 
+  Product,
   Transaction, 
   TransactionItem, 
   CheckoutPayload, 
@@ -214,7 +215,7 @@ export async function checkoutAction(payload: CheckoutPayload): Promise<Checkout
     }
 
     // Local / In-Memory Store Simulation Fallback
-    const productMap = new Map<string, (typeof dbStore.products)[0]>();
+    const productMap = new Map<string, Product>();
     for (const p of dbStore.products) {
       productMap.set(p.id, p);
     }

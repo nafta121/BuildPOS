@@ -4,7 +4,7 @@
 import { createClient, isSupabaseConfigured } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
 import { Profile, Role } from '@/types/database';
-import { INITIAL_PROFILES } from '@/lib/mock-data';
+import { dbStore, DbStore } from '@/lib/db-store';
 
 export interface AuthResult {
   success: boolean;
@@ -79,7 +79,7 @@ export async function signInAction(formData: {
       return {
         success: true,
         profile: {
-          ...INITIAL_PROFILES[0],
+          ...dbStore.profiles[0],
           email: 'kasir@buildpos.com',
         },
       };
@@ -88,7 +88,7 @@ export async function signInAction(formData: {
       return {
         success: true,
         profile: {
-          ...INITIAL_PROFILES[1],
+          ...dbStore.profiles[1],
           email: 'admin@buildpos.com',
         },
       };
@@ -97,7 +97,7 @@ export async function signInAction(formData: {
       return {
         success: true,
         profile: {
-          ...INITIAL_PROFILES[2],
+          ...dbStore.profiles[2],
           email: 'owner@buildpos.com',
         },
       };
