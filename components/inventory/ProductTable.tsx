@@ -12,7 +12,9 @@ interface ProductTableProps {
   onOpenEditProduct: (prod: Product) => void;
 }
 
-export const ProductTable: React.FC<ProductTableProps> = ({
+// OPTIMIZATION: Memoized with React.memo to prevent unnecessary table re-renders
+// when parent InventoryView state updates (such as typing into modal forms or searching).
+export const ProductTable: React.FC<ProductTableProps> = React.memo(({
   products,
   isLoading,
   canSeeCostPrice,
@@ -131,4 +133,6 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ProductTable.displayName = 'ProductTable';

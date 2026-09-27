@@ -96,14 +96,25 @@ export const InventoryView: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // OPTIMIZATION: Pre-normalize searchQuery string outside predicate loop to eliminate O(N)
+  // redundant .toLowerCase() string operations during product filtering.
   const filteredProducts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const hasQuery = normalizedQuery.length > 0;
+
     return products.filter((p) => {
-      const matchSearch =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.sku && p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchCat = selectedCatId === 'all' || p.category_id === selectedCatId;
+      if (!matchCat) return false;
+
       const matchLowStock = !filterLowStockOnly || p.stock <= p.min_stock;
-      return matchSearch && matchCat && matchLowStock;
+      if (!matchLowStock) return false;
+
+      if (!hasQuery) return true;
+
+      return (
+        p.name.toLowerCase().includes(normalizedQuery) ||
+        (p.sku ? p.sku.toLowerCase().includes(normalizedQuery) : false)
+      );
     });
   }, [products, searchQuery, selectedCatId, filterLowStockOnly]);
 
@@ -128,7 +139,9 @@ export const InventoryView: React.FC = () => {
     setIsProductModalOpen(true);
   };
 
-  const handleOpenEditProduct = (prod: Product) => {
+  // OPTIMIZATION: Stable function reference via useCallback prevents ProductTable from
+  // re-rendering when modal states or form inputs change in InventoryView.
+  const handleOpenEditProduct = useCallback((prod: Product) => {
     setEditingProduct(prod);
     setFormData({
       id: prod.id,
@@ -144,14 +157,14 @@ export const InventoryView: React.FC = () => {
     });
     setFormError(null);
     setIsProductModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenStockAdjust = (prod: Product) => {
+  const handleOpenStockAdjust = useCallback((prod: Product) => {
     setStockAdjustProduct(prod);
     setNewStockValue(prod.stock.toString());
     setFormError(null);
     setIsStockModalOpen(true);
-  };
+  }, []);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
