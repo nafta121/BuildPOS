@@ -12,12 +12,33 @@ export const round2 = (val: number): number => {
   return Math.round((val + Number.EPSILON) * 100) / 100;
 };
 
-/**
- * Calculates item subtotal = quantity * sellingPrice with 2-decimal precision
- */
-export const calcSubtotal = (qty: number, price: number): number => {
-  return Math.round((qty * price + Number.EPSILON) * 100) / 100;
+export type CartItemLike = {
+  price?: number;
+  selling_price?: number;
+  qty?: number;
+  cart_quantity?: number;
 };
+
+/**
+ * Calculates subtotal for a single item (qty, price) or an array of cart items with 2-decimal precision
+ */
+export function calcSubtotal(qty: number, price: number): number;
+export function calcSubtotal(items: CartItemLike[]): number;
+export function calcSubtotal(
+  arg1: number | CartItemLike[],
+  arg2?: number
+): number {
+  if (Array.isArray(arg1)) {
+    if (arg1.length === 0) return 0;
+    const totalCents = arg1.reduce((accum, item) => {
+      const q = item.qty ?? item.cart_quantity ?? 0;
+      const p = item.price ?? item.selling_price ?? 0;
+      return accum + Math.round((q * p + Number.EPSILON) * 100);
+    }, 0);
+    return totalCents / 100;
+  }
+  return Math.round(((arg1 ?? 0) * (arg2 ?? 0) + Number.EPSILON) * 100) / 100;
+}
 
 interface CartState {
   items: CartItem[];

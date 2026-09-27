@@ -78,15 +78,57 @@ export const PosView: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Filtered products list
+  // Cashier Keyboard Shortcut (F9 to trigger checkout)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (cartItems.length > 0 && !isCheckoutOpen) {
+          setIsCheckoutOpen(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cartItems.length, isCheckoutOpen]);
+
+  // Pre-calculate product counts per category in O(N) using a Map.
+  // Replaces the O(C * N) nested filter loop that previously ran inside categories.map on every single render.
+  const categoryProductCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const prod of products) {
+      if (prod.category_id) {
+        counts.set(prod.category_id, (counts.get(prod.category_id) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [products]);
+
+  // Index cart items by ID for O(1) inCart lookup per product card during catalog render,
+  // replacing O(P * K) linear scans across all displayed products.
+  const cartItemMap = useMemo(() => {
+    const map = new Map<string, (typeof cartItems)[number]>();
+    for (const item of cartItems) {
+      map.set(item.id, item);
+    }
+    return map;
+  }, [cartItems]);
+
+  // Filtered products list with hoisted search query normalization & early category short-circuiting
   const filteredProducts = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const hasQuery = normalizedQuery.length > 0;
+    const isAllCategories = selectedCategoryId === 'all';
+
     return products.filter((prod) => {
-      const matchesSearch =
-        prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (prod.sku && prod.sku.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCat =
-        selectedCategoryId === 'all' || prod.category_id === selectedCategoryId;
-      return matchesSearch && matchesCat && prod.is_active !== false;
+      if (prod.is_active === false) return false;
+      if (!isAllCategories && prod.category_id !== selectedCategoryId) return false;
+      if (!hasQuery) return true;
+
+      return (
+        prod.name.toLowerCase().includes(normalizedQuery) ||
+        (prod.sku?.toLowerCase().includes(normalizedQuery) ?? false)
+      );
     });
   }, [products, searchQuery, selectedCategoryId]);
 
@@ -210,7 +252,7 @@ export const PosView: React.FC = () => {
             Semua Produk ({products.length})
           </button>
           {categories.map((cat) => {
-            const count = products.filter((p) => p.category_id === cat.id).length;
+            const count = categoryProductCounts.get(cat.id) || 0;
             return (
               <button
                 key={cat.id}
@@ -249,7 +291,7 @@ export const PosView: React.FC = () => {
               {filteredProducts.map((product) => {
                 const isOutOfStock = product.stock <= 0;
                 const isLowStock = product.stock <= product.min_stock && !isOutOfStock;
-                const inCart = cartItems.find((i) => i.id === product.id);
+                const inCart = cartItemMap.get(product.id);
 
                 return (
                   <div
@@ -430,7 +472,8 @@ export const PosView: React.FC = () => {
                             e.stopPropagation();
                             incrementQuantity(item.id, -0.5);
                           }}
-                          className="w-7 h-7 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-300 font-bold"
+                          aria-label={`Kurangi 0.5 ${item.unit} ${item.name}`}
+                          className="w-7 h-7 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-300 font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                           title="Kurangi 0.5"
                         >
                           <Minus className="w-3.5 h-3.5" />
@@ -441,6 +484,7 @@ export const PosView: React.FC = () => {
                             type="number"
                             step="0.01"
                             min="0.01"
+                            aria-label={`Kuantitas ${item.name}`}
                             value={item.cart_quantity}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
@@ -459,7 +503,8 @@ export const PosView: React.FC = () => {
                             e.stopPropagation();
                             incrementQuantity(item.id, 0.5);
                           }}
-                          className="w-7 h-7 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-300 font-bold"
+                          aria-label={`Tambah 0.5 ${item.unit} ${item.name}`}
+                          className="w-7 h-7 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-300 font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                           title="Tambah 0.5"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -508,7 +553,8 @@ export const PosView: React.FC = () => {
             <button
               onClick={() => setIsCheckoutOpen(true)}
               disabled={cartItems.length === 0}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+              aria-keyshortcuts="F9"
+              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-base rounded-xl shadow-lg transition flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             >
               <span>Bayar Sekarang (F9)</span>
               <ArrowRight className="w-5 h-5" />
@@ -548,7 +594,8 @@ export const PosView: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsMobileCartOpen(false)}
-                className="p-2 text-slate-400 hover:text-white"
+                aria-label="Tutup keranjang"
+                className="p-2 text-slate-400 hover:text-white rounded-lg focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -578,7 +625,8 @@ export const PosView: React.FC = () => {
                         e.stopPropagation();
                         removeItem(item.id);
                       }}
-                      className="text-slate-400 hover:text-rose-400 p-1"
+                      aria-label={`Hapus ${item.name} dari keranjang`}
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -591,7 +639,8 @@ export const PosView: React.FC = () => {
                           e.stopPropagation();
                           incrementQuantity(item.id, -0.5);
                         }}
-                        className="w-8 h-8 bg-slate-800 rounded flex items-center justify-center text-slate-200 font-bold text-sm"
+                        aria-label={`Kurangi 0.5 ${item.unit} ${item.name}`}
+                        className="w-8 h-8 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-200 font-bold text-sm transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                       >
                         -
                       </button>
@@ -600,6 +649,7 @@ export const PosView: React.FC = () => {
                           type="number"
                           step="0.01"
                           min="0.01"
+                          aria-label={`Kuantitas ${item.name}`}
                           value={item.cart_quantity}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
@@ -617,7 +667,8 @@ export const PosView: React.FC = () => {
                           e.stopPropagation();
                           incrementQuantity(item.id, 0.5);
                         }}
-                        className="w-8 h-8 bg-slate-800 rounded flex items-center justify-center text-slate-200 font-bold text-sm"
+                        aria-label={`Tambah 0.5 ${item.unit} ${item.name}`}
+                        className="w-8 h-8 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-200 font-bold text-sm transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                       >
                         +
                       </button>
