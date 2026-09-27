@@ -107,15 +107,19 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     <td className="py-3.5 px-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
+                          type="button"
                           onClick={() => onOpenStockAdjust(prod)}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-xs font-semibold transition"
+                          aria-label={`Update stok fisik ${prod.name}`}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                           title="Update Stok Fisik"
                         >
                           Stok
                         </button>
                         <button
+                          type="button"
                           onClick={() => onOpenEditProduct(prod)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition"
+                          aria-label={`Edit detail produk ${prod.name}`}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
                           title="Edit Detail Produk"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
