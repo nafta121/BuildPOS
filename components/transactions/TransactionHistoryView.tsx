@@ -46,16 +46,60 @@ export const TransactionHistoryView: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // OPTIMIZATION: Memoized with useMemo to cache filtered transaction list and prevent
-  // re-filtering on unrelated state updates (e.g., toggling receipt modal).
+  // OPTIMIZATION: Pre-process transaction display fields (date formatting, item summary,
+  // currency string, and search text) once when transactions change. This avoids calling
+  // `new Date().toLocaleDateString('id-ID')`, `.map().join()`, and `.toLocaleString()` on
+  // every re-render (such as typing in the search box or opening/closing receipt modal).
+  const preparedTransactions = useMemo(() => {
+    return transactions.map((tx) => {
+      const formattedDate = new Date(tx.created_at).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      const itemsSummary =
+        tx.items && tx.items.length > 0
+          ? tx.items
+              .map(
+                (it) =>
+                  `${it.product?.name || 'Material'} (${it.quantity} ${
+                    it.product?.unit || ''
+                  })`
+              )
+              .join(', ')
+          : '-';
+
+      const cashierName = tx.cashier?.full_name || 'Kasir';
+      const formattedTotal = tx.total_amount.toLocaleString('id-ID');
+      const searchStr = `${tx.invoice_no} ${cashierName} ${itemsSummary}`.toLowerCase();
+
+      return {
+        raw: tx,
+        id: tx.id,
+        invoice_no: tx.invoice_no,
+        formattedDate,
+        cashierName,
+        itemsSummary,
+        payment_method: tx.payment_method,
+        total_amount: tx.total_amount,
+        formattedTotal,
+        searchStr,
+      };
+    });
+  }, [transactions]);
+
+  // Filter prepared transactions using pre-computed searchStr
   const filteredTransactions = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) return transactions;
+    if (!normalizedQuery) return preparedTransactions;
 
-    return transactions.filter((t) =>
-      t.invoice_no.toLowerCase().includes(normalizedQuery)
+    return preparedTransactions.filter((tx) =>
+      tx.searchStr.includes(normalizedQuery)
     );
-  }, [transactions, searchQuery]);
+  }, [preparedTransactions, searchQuery]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto">
@@ -135,27 +179,13 @@ export const TransactionHistoryView: React.FC = () => {
                         {tx.invoice_no}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-300">
-                        {new Date(tx.created_at).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {tx.formattedDate}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-300">
-                        {tx.cashier?.full_name || 'Kasir'}
+                        {tx.cashierName}
                       </td>
-                      <td className="py-3.5 px-4 text-xs text-slate-300 max-w-xs truncate">
-                        {tx.items && tx.items.length > 0 ? (
-                          <span>
-                            {tx.items
-                              .map((it) => `${it.product?.name || 'Material'} (${it.quantity} ${it.product?.unit || ''})`)
-                              .join(', ')}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
+                      <td className="py-3.5 px-4 text-xs text-slate-300 max-w-xs truncate" title={tx.itemsSummary}>
+                        {tx.itemsSummary}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span
@@ -174,11 +204,11 @@ export const TransactionHistoryView: React.FC = () => {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-400 text-sm">
-                        Rp {tx.total_amount.toLocaleString('id-ID')}
+                        Rp {tx.formattedTotal}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <button
-                          onClick={() => setActiveReceiptTx(tx)}
+                          onClick={() => setActiveReceiptTx(tx.raw)}
                           className="px-3 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 mx-auto transition"
                           title="Lihat & Cetak Nota Kasir"
                         >
