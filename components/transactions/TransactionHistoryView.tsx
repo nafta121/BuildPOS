@@ -1,7 +1,7 @@
 // components/transactions/TransactionHistoryView.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Transaction } from '@/types/database';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getTransactionsAction } from '@/app/actions/transactions';
@@ -46,9 +46,16 @@ export const TransactionHistoryView: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const filteredTransactions = transactions.filter((t) =>
-    t.invoice_no.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // OPTIMIZATION: Memoized with useMemo to cache filtered transaction list and prevent
+  // re-filtering on unrelated state updates (e.g., toggling receipt modal).
+  const filteredTransactions = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return transactions;
+
+    return transactions.filter((t) =>
+      t.invoice_no.toLowerCase().includes(normalizedQuery)
+    );
+  }, [transactions, searchQuery]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto">
