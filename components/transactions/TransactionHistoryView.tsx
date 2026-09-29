@@ -46,16 +46,47 @@ export const TransactionHistoryView: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // OPTIMIZATION: Memoized with useMemo to cache filtered transaction list and prevent
-  // re-filtering on unrelated state updates (e.g., toggling receipt modal).
+  // OPTIMIZATION: Pre-format date strings and item summary strings for all transactions
+  // so expensive Date allocations and array map/join loops don't re-run on search keystrokes or modal toggles.
+  const formattedTransactions = useMemo(() => {
+    return transactions.map((tx) => {
+      const formattedDate = new Date(tx.created_at).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      const itemsSummary =
+        tx.items && tx.items.length > 0
+          ? tx.items
+              .map(
+                (it) =>
+                  `${it.product?.name || 'Material'} (${it.quantity} ${
+                    it.product?.unit || ''
+                  })`
+              )
+              .join(', ')
+          : '-';
+
+      return {
+        ...tx,
+        formattedDate,
+        itemsSummary,
+      };
+    });
+  }, [transactions]);
+
+  // Filter cached formatted transactions based on query
   const filteredTransactions = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) return transactions;
+    if (!normalizedQuery) return formattedTransactions;
 
-    return transactions.filter((t) =>
+    return formattedTransactions.filter((t) =>
       t.invoice_no.toLowerCase().includes(normalizedQuery)
     );
-  }, [transactions, searchQuery]);
+  }, [formattedTransactions, searchQuery]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-100 overflow-y-auto">
@@ -135,27 +166,13 @@ export const TransactionHistoryView: React.FC = () => {
                         {tx.invoice_no}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-300">
-                        {new Date(tx.created_at).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {tx.formattedDate}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-300">
                         {tx.cashier?.full_name || 'Kasir'}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-300 max-w-xs truncate">
-                        {tx.items && tx.items.length > 0 ? (
-                          <span>
-                            {tx.items
-                              .map((it) => `${it.product?.name || 'Material'} (${it.quantity} ${it.product?.unit || ''})`)
-                              .join(', ')}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
+                        <span>{tx.itemsSummary}</span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span
