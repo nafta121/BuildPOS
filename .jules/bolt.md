@@ -12,3 +12,7 @@
 ## 2026-09-28 - Transaction History Table Rendering CPU Bottleneck with Date & I18N Formatting
 **Learning:** In `TransactionHistoryView`, `toLocaleDateString('id-ID')`, `.toLocaleString('id-ID')`, and `items.map().join()` ran inside table row rendering loops on every keystroke in search or modal state change (`activeReceiptTx`), instantiating I18N formatters repeatedly and causing UI lag.
 **Action:** Pre-process transaction display fields (`formattedDate`, `itemsSummary`, `formattedTotal`, `searchStr`) into a `preparedTransactions` `useMemo` hook whenever `transactions` change.
+
+## 2026-10-02 - POS Product Catalog Grid Re-rendering Bottleneck during Numpad Typing & Cart Updates
+**Learning:** In `PosView`, every keystroke on the VirtualNumpad or cart quantity change updates cart state, re-rendering `PosView`. Inline catalog card JSX rendered inside `filteredProducts.map` forced React to reconcile all N product card DOM nodes on every single Numpad keypress or cart interaction.
+**Action:** Extract catalog product cards into a standalone `ProductCard` component wrapped in `React.memo` and memoize click handlers (`handleProductClick`, `handleQuickAddFraction`) with `useCallback`. This reduces ProductCard re-renders from N down to 1 during cart interactions.
