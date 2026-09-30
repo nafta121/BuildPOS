@@ -76,7 +76,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
         <nav className="hidden md:flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab('pos')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+            aria-label="Kasir POS"
+            aria-current={activeTab === 'pos' ? 'page' : undefined}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
               activeTab === 'pos'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -88,7 +90,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+            aria-label="Riwayat Nota"
+            aria-current={activeTab === 'history' ? 'page' : undefined}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
               activeTab === 'history'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -102,7 +106,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           {isAdminOrOwner && (
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+              aria-label="Gudang & Stok"
+              aria-current={activeTab === 'inventory' ? 'page' : undefined}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                 activeTab === 'inventory'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -117,7 +123,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
           {isOwner && (
             <button
               onClick={() => setActiveTab('owner')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+              aria-label="Dashboard Laba"
+              aria-current={activeTab === 'owner' ? 'page' : undefined}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                 activeTab === 'owner'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900'
@@ -152,7 +160,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
           <button
             onClick={handleLogout}
-            className="p-2 sm:px-3 sm:py-2 bg-slate-950 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold"
+            aria-label="Keluar dari Akun"
+            className="p-2 sm:px-3 sm:py-2 bg-slate-950 hover:bg-rose-950/60 border border-slate-700 hover:border-rose-800 text-slate-300 hover:text-rose-300 rounded-xl transition flex items-center gap-1.5 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
             title="Keluar dari Akun"
           >
             <LogOut className="w-4 h-4" />
