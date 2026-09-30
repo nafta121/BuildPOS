@@ -293,16 +293,29 @@ export const PosView: React.FC = () => {
                 const isLowStock = product.stock <= product.min_stock && !isOutOfStock;
                 const inCart = cartItemMap.get(product.id);
 
+                const formattedStock = product.stock % 1 === 0 ? product.stock : product.stock.toFixed(2);
+                const ariaText = `${product.name}, Rp ${product.selling_price.toLocaleString('id-ID')}, Stok: ${formattedStock} ${product.unit}${inCart ? `, Di keranjang: ${inCart.cart_quantity} ${inCart.unit}` : ''}${isOutOfStock ? ', Stok habis' : ''}`;
+
                 return (
                   <div
                     key={product.id}
+                    role="button"
+                    tabIndex={isOutOfStock ? -1 : 0}
+                    aria-label={ariaText}
+                    aria-disabled={isOutOfStock}
                     onClick={() => handleProductClick(product)}
-                    className={`group relative bg-slate-900 border rounded-xl p-3 sm:p-4 flex flex-col justify-between transition-all select-none cursor-pointer ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleProductClick(product);
+                      }
+                    }}
+                    className={`group relative bg-slate-900 border rounded-xl p-3 sm:p-4 flex flex-col justify-between transition-all select-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
                       isOutOfStock
                         ? 'opacity-50 border-slate-800 cursor-not-allowed'
                         : inCart
-                        ? 'border-emerald-500/80 bg-slate-900/90 ring-1 ring-emerald-500/50 shadow-md'
-                        : 'border-slate-800 hover:border-slate-700 hover:bg-slate-850 active:scale-[0.98]'
+                        ? 'border-emerald-500/80 bg-slate-900/90 ring-1 ring-emerald-500/50 shadow-md cursor-pointer'
+                        : 'border-slate-800 hover:border-slate-700 hover:bg-slate-850 active:scale-[0.98] cursor-pointer'
                     }`}
                   >
                     <div>
