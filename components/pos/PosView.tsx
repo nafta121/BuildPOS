@@ -579,8 +579,10 @@ export const PosView: React.FC = () => {
       {/* Mobile Floating Action Button (FAB) for Cart (< 768px) */}
       <div className="md:hidden fixed bottom-16 left-0 right-0 p-3 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none z-30">
         <button
+          type="button"
           onClick={() => setIsMobileCartOpen(true)}
-          className="pointer-events-auto w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-base rounded-2xl shadow-2xl flex items-center justify-between border border-emerald-400/30"
+          aria-label={`Buka keranjang belanja: ${cartItems.length} item, total Rp ${getTotalAmount().toLocaleString('id-ID')}`}
+          className="pointer-events-auto w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-extrabold text-base rounded-2xl shadow-2xl flex items-center justify-between border border-emerald-400/30 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
         >
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
