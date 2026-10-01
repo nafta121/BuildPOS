@@ -92,6 +92,20 @@ export const PosView: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cartItems.length, isCheckoutOpen]);
 
+  // Pre-format product prices and stock strings once when `products` array changes.
+  // Prevents repeated `toLocaleString('id-ID')` and `.toFixed(2)` calls inside `filteredProducts.map` on every keystroke.
+  const preparedProducts = useMemo(() => {
+    return products.map((prod) => {
+      const formattedPrice = prod.selling_price.toLocaleString('id-ID');
+      const formattedStock = prod.stock % 1 === 0 ? prod.stock : prod.stock.toFixed(2);
+      return {
+        ...prod,
+        formattedPrice,
+        formattedStock,
+      };
+    });
+  }, [products]);
+
   // Pre-calculate product counts per category in O(N) using a Map.
   // Replaces the O(C * N) nested filter loop that previously ran inside categories.map on every single render.
   const categoryProductCounts = useMemo(() => {
@@ -114,13 +128,28 @@ export const PosView: React.FC = () => {
     return map;
   }, [cartItems]);
 
+  // Pre-format cart item prices and subtotals once when `cartItems` changes.
+  const preparedCartItems = useMemo(() => {
+    return cartItems.map((item) => ({
+      ...item,
+      formattedSellingPrice: item.selling_price.toLocaleString('id-ID'),
+      formattedSubtotal: item.subtotal.toLocaleString('id-ID'),
+    }));
+  }, [cartItems]);
+
+  // Pre-compute formatted total amount once when `cartItems` changes instead of 3x per render.
+  const formattedTotalAmount = useMemo(() => {
+    const totalCents = cartItems.reduce((accum, item) => accum + Math.round(item.subtotal * 100), 0);
+    return (totalCents / 100).toLocaleString('id-ID');
+  }, [cartItems]);
+
   // Filtered products list with hoisted search query normalization & early category short-circuiting
   const filteredProducts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const hasQuery = normalizedQuery.length > 0;
     const isAllCategories = selectedCategoryId === 'all';
 
-    return products.filter((prod) => {
+    return preparedProducts.filter((prod) => {
       if (prod.is_active === false) return false;
       if (!isAllCategories && prod.category_id !== selectedCategoryId) return false;
       if (!hasQuery) return true;
@@ -130,7 +159,7 @@ export const PosView: React.FC = () => {
         (prod.sku?.toLowerCase().includes(normalizedQuery) ?? false)
       );
     });
-  }, [products, searchQuery, selectedCategoryId]);
+  }, [preparedProducts, searchQuery, selectedCategoryId]);
 
   // Selected Cart Item for Virtual Numpad manipulation
   const activeCartItem = useMemo(() => {
@@ -293,8 +322,7 @@ export const PosView: React.FC = () => {
                 const isLowStock = product.stock <= product.min_stock && !isOutOfStock;
                 const inCart = cartItemMap.get(product.id);
 
-                const formattedStock = product.stock % 1 === 0 ? product.stock : product.stock.toFixed(2);
-                const ariaText = `${product.name}, Rp ${product.selling_price.toLocaleString('id-ID')}, Stok: ${formattedStock} ${product.unit}${inCart ? `, Di keranjang: ${inCart.cart_quantity} ${inCart.unit}` : ''}${isOutOfStock ? ', Stok habis' : ''}`;
+                const ariaText = `${product.name}, Rp ${product.formattedPrice}, Stok: ${product.formattedStock} ${product.unit}${inCart ? `, Di keranjang: ${inCart.cart_quantity} ${inCart.unit}` : ''}${isOutOfStock ? ', Stok habis' : ''}`;
 
                 return (
                   <div
@@ -345,7 +373,7 @@ export const PosView: React.FC = () => {
                       {/* Price and Stock status */}
                       <div className="flex justify-between items-baseline mb-2">
                         <span className="font-black text-sm sm:text-base text-emerald-400 font-mono">
-                          Rp {product.selling_price.toLocaleString('id-ID')}
+                          Rp {product.formattedPrice}
                         </span>
                         <span
                           className={`text-[10px] font-semibold ${
@@ -356,7 +384,7 @@ export const PosView: React.FC = () => {
                               : 'text-slate-400'
                           }`}
                         >
-                          Stok: {product.stock % 1 === 0 ? product.stock : product.stock.toFixed(2)}{' '}
+                          Stok: {product.formattedStock}{' '}
                           {product.unit}
                         </span>
                       </div>
@@ -436,14 +464,14 @@ export const PosView: React.FC = () => {
 
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[40vh]">
-            {cartItems.length === 0 ? (
+            {preparedCartItems.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center py-10 text-slate-500 text-center">
                 <ShoppingCart className="w-10 h-10 mb-2 stroke-1 opacity-40" />
                 <p className="font-semibold text-sm">Keranjang kosong</p>
                 <p className="text-xs text-slate-500 mt-0.5">Pilih produk di sebelah kiri</p>
               </div>
             ) : (
-              cartItems.map((item) => {
+              preparedCartItems.map((item) => {
                 const isSelected = selectedProductId === item.id;
                 return (
                   <div
@@ -461,7 +489,7 @@ export const PosView: React.FC = () => {
                           {item.name}
                         </div>
                         <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
-                          Rp {item.selling_price.toLocaleString('id-ID')} / {item.unit}
+                          Rp {item.formattedSellingPrice} / {item.unit}
                         </div>
                       </div>
                       <button
@@ -526,7 +554,7 @@ export const PosView: React.FC = () => {
 
                       {/* Subtotal */}
                       <div className="text-right font-black text-sm text-white font-mono">
-                        Rp {item.subtotal.toLocaleString('id-ID')}
+                        Rp {item.formattedSubtotal}
                       </div>
                     </div>
                   </div>
@@ -559,7 +587,7 @@ export const PosView: React.FC = () => {
             <div className="flex justify-between items-baseline">
               <span className="text-xs uppercase font-bold text-slate-400">Total Belanja</span>
               <span className="text-2xl font-black text-emerald-400 font-mono">
-                Rp {getTotalAmount().toLocaleString('id-ID')}
+                Rp {formattedTotalAmount}
               </span>
             </div>
 
@@ -587,7 +615,7 @@ export const PosView: React.FC = () => {
             <span>Keranjang ({cartItems.length})</span>
           </div>
           <span className="font-mono text-lg">
-            Rp {getTotalAmount().toLocaleString('id-ID')}
+            Rp {formattedTotalAmount}
           </span>
         </button>
       </div>
@@ -616,7 +644,7 @@ export const PosView: React.FC = () => {
 
             {/* Drawer Items */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
-              {cartItems.map((item) => (
+              {preparedCartItems.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => setSelectedProductId(item.id)}
@@ -630,7 +658,7 @@ export const PosView: React.FC = () => {
                     <div>
                       <div className="font-bold text-sm text-white">{item.name}</div>
                       <div className="text-xs text-slate-400 font-mono mt-0.5">
-                        Rp {item.selling_price.toLocaleString('id-ID')} / {item.unit}
+                        Rp {item.formattedSellingPrice} / {item.unit}
                       </div>
                     </div>
                     <button
@@ -687,7 +715,7 @@ export const PosView: React.FC = () => {
                       </button>
                     </div>
                     <div className="font-mono font-black text-white text-base">
-                      Rp {item.subtotal.toLocaleString('id-ID')}
+                      Rp {item.formattedSubtotal}
                     </div>
                   </div>
                 </div>
@@ -718,7 +746,7 @@ export const PosView: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs uppercase text-slate-400 font-bold">Total Pembayaran</span>
                 <span className="text-2xl font-black text-emerald-400 font-mono">
-                  Rp {getTotalAmount().toLocaleString('id-ID')}
+                  Rp {formattedTotalAmount}
                 </span>
               </div>
               <button
