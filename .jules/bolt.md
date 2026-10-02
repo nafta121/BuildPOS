@@ -12,3 +12,7 @@
 ## 2026-09-28 - Transaction History Table Rendering CPU Bottleneck with Date & I18N Formatting
 **Learning:** In `TransactionHistoryView`, `toLocaleDateString('id-ID')`, `.toLocaleString('id-ID')`, and `items.map().join()` ran inside table row rendering loops on every keystroke in search or modal state change (`activeReceiptTx`), instantiating I18N formatters repeatedly and causing UI lag.
 **Action:** Pre-process transaction display fields (`formattedDate`, `itemsSummary`, `formattedTotal`, `searchStr`) into a `preparedTransactions` `useMemo` hook whenever `transactions` change.
+
+## 2026-10-02 - Virtual Numpad Re-rendering Cascade on Unmemoized Callbacks & Presets
+**Learning:** In BuildPOS, `VirtualNumpad` contains 15+ interactive button elements and icons. When `VirtualNumpad` was unmemoized and passed inline callback handlers from `PosView` or `CheckoutModal`, typing in search boxes or payment inputs re-created default preset arrays (`defaultQtyPresets`, `defaultCashPresets`) and re-rendered the entire numpad DOM tree on every keystroke.
+**Action:** Wrap `VirtualNumpad` with `React.memo`, hoist default preset arrays outside component bodies, and wrap parent handler props (`handleNumpadChange`, `handleNumpadPreset`, `handleNumpadClear`, `handleNumpadEnter`) in `useCallback`.

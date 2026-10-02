@@ -151,7 +151,7 @@ export const PosView: React.FC = () => {
     }
   }, [activeCartItem]);
 
-  const handleNumpadChange = (val: string) => {
+  const handleNumpadChange = useCallback((val: string) => {
     setNumpadQtyStr(val);
     if (activeCartItem) {
       const parsed = parseFloat(val);
@@ -159,13 +159,24 @@ export const PosView: React.FC = () => {
         updateQuantity(activeCartItem.id, parsed);
       }
     }
-  };
+  }, [activeCartItem, updateQuantity]);
 
-  const handleNumpadPreset = (delta: number) => {
+  const handleNumpadPreset = useCallback((delta: number) => {
     if (activeCartItem) {
       incrementQuantity(activeCartItem.id, delta);
     }
-  };
+  }, [activeCartItem, incrementQuantity]);
+
+  const handleNumpadClear = useCallback(() => {
+    setNumpadQtyStr('0');
+    if (activeCartItem) {
+      updateQuantity(activeCartItem.id, 0);
+    }
+  }, [activeCartItem, updateQuantity]);
+
+  const handleNumpadEnter = useCallback(() => {
+    setSelectedProductId(null);
+  }, [setSelectedProductId]);
 
   const handleProductClick = (product: Product) => {
     if (product.stock <= 0) return;
@@ -545,11 +556,8 @@ export const PosView: React.FC = () => {
                 title={`Atur Qty: ${activeCartItem.name}`}
                 unit={activeCartItem.unit}
                 mode="qty"
-                onEnter={() => setSelectedProductId(null)}
-                onClear={() => {
-                  setNumpadQtyStr('0');
-                  updateQuantity(activeCartItem.id, 0);
-                }}
+                onEnter={handleNumpadEnter}
+                onClear={handleNumpadClear}
               />
             </div>
           )}
@@ -703,11 +711,8 @@ export const PosView: React.FC = () => {
                     title={`Atur Qty: ${activeCartItem.name}`}
                     unit={activeCartItem.unit}
                     mode="qty"
-                    onEnter={() => setSelectedProductId(null)}
-                    onClear={() => {
-                      setNumpadQtyStr('0');
-                      updateQuantity(activeCartItem.id, 0);
-                    }}
+                    onEnter={handleNumpadEnter}
+                    onClear={handleNumpadClear}
                   />
                 </div>
               )}
