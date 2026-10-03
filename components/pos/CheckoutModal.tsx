@@ -198,17 +198,25 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   Pilihan Uang Cepat (Fat-Finger)
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {cashSuggestions.map((sug, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      aria-label={`Uang ${sug.label}`}
-                      onClick={() => setAmountPaidStr(sug.value.toString())}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-xs sm:text-sm font-bold text-amber-300 hover:text-white rounded-lg border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
-                    >
-                      {sug.label}
-                    </button>
-                  ))}
+                  {cashSuggestions.map((sug, idx) => {
+                    const isSelected = amountPaidStr === sug.value.toString();
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        aria-pressed={isSelected}
+                        aria-label={`Set nominal pembayaran ${sug.label === 'Uang Pas' ? `uang pas Rp ${sug.value.toLocaleString('id-ID')}` : sug.label}`}
+                        onClick={() => setAmountPaidStr(sug.value.toString())}
+                        className={`px-3 py-2 text-xs sm:text-sm font-bold rounded-lg border transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 focus-visible:outline-none ${
+                          isSelected
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-1 ring-amber-500'
+                            : 'bg-slate-800 hover:bg-slate-700 active:bg-amber-600 border-slate-700 text-amber-300 hover:text-white'
+                        }`}
+                      >
+                        {sug.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
