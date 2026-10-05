@@ -58,7 +58,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition"
+              aria-label="Tutup nota"
+              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
               title="Tutup"
             >
               <X className="w-4 h-4" />
