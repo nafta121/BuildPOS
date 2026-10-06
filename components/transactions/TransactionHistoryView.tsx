@@ -121,7 +121,8 @@ export const TransactionHistoryView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={loadData}
-              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition"
+              aria-label="Perbarui riwayat transaksi"
+              className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-200 rounded-xl border border-slate-700 text-xs sm:text-sm font-semibold flex items-center gap-2 transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -136,11 +137,21 @@ export const TransactionHistoryView: React.FC = () => {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
+            aria-label="Cari nomor nota atau invoice"
             placeholder="Cari nomor nota / invoice..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full pl-10 pr-8 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-medium"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              aria-label="Bersihkan pencarian"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-md focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Transactions Table */}
@@ -209,7 +220,8 @@ export const TransactionHistoryView: React.FC = () => {
                       <td className="py-3.5 px-4 text-center">
                         <button
                           onClick={() => setActiveReceiptTx(tx.raw)}
-                          className="px-3 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 mx-auto transition"
+                          aria-label={`Cetak nota untuk invoice ${tx.invoice_no}`}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 mx-auto transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                           title="Lihat & Cetak Nota Kasir"
                         >
                           <Printer className="w-3.5 h-3.5" />
