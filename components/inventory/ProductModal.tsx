@@ -3,7 +3,7 @@
 import React from 'react';
 import { Product, Category } from '@/types/database';
 import { ProductFormData } from '@/app/actions/products';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -31,15 +31,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="product-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
+    >
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl text-white my-auto">
         <div className="flex justify-between items-center pb-3 border-b border-slate-800 mb-4">
-          <h2 className="text-lg font-bold">
+          <h2 id="product-modal-title" className="text-lg font-bold">
             {editingProduct ? 'Edit Master Produk' : 'Tambah Produk Bahan Bangunan'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1"
+            aria-label="Tutup modal produk"
+            className="text-slate-400 hover:text-white p-1 rounded-lg focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -195,16 +202,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold shadow-lg transition flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             >
-              {isSubmitting ? 'Menyimpan...' : 'Simpan Produk'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <span>Simpan Produk</span>
+              )}
             </button>
           </div>
         </form>
