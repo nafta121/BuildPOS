@@ -12,3 +12,7 @@
 ## 2026-09-28 - Transaction History Table Rendering CPU Bottleneck with Date & I18N Formatting
 **Learning:** In `TransactionHistoryView`, `toLocaleDateString('id-ID')`, `.toLocaleString('id-ID')`, and `items.map().join()` ran inside table row rendering loops on every keystroke in search or modal state change (`activeReceiptTx`), instantiating I18N formatters repeatedly and causing UI lag.
 **Action:** Pre-process transaction display fields (`formattedDate`, `itemsSummary`, `formattedTotal`, `searchStr`) into a `preparedTransactions` `useMemo` hook whenever `transactions` change.
+
+## 2026-09-30 - POS Product Catalog Formatting and Cart Total Recalculation Bottleneck
+**Learning:** In `PosView`, `product.selling_price.toLocaleString('id-ID')`, `.toFixed(2)`, and `.toLowerCase()` ran inside the catalog rendering loop on every single keystroke in the search bar or Virtual Numpad press. Additionally, `getTotalAmount().toLocaleString('id-ID')` was called repeatedly in JSX on every render frame.
+**Action:** Pre-process product display strings (`formattedPrice`, `formattedStock`, `isOutOfStock`, `isLowStock`, `searchName`, `searchSku`) into a `preparedProducts` `useMemo` hook, and memoize `formattedTotalAmount` to execute total formatting only when `cartItems` change.
