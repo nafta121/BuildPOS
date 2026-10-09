@@ -114,23 +114,64 @@ export const PosView: React.FC = () => {
     return map;
   }, [cartItems]);
 
-  // Filtered products list with hoisted search query normalization & early category short-circuiting
+  // OPTIMIZATION: Memoize formatted cart total string to avoid calling getTotalAmount().toLocaleString('id-ID')
+  // multiple times in JSX on every render frame.
+  const formattedTotalAmount = useMemo(() => {
+    return cartItems.length >= 0 ? getTotalAmount().toLocaleString('id-ID') : '0';
+  }, [cartItems, getTotalAmount]);
+
+  // OPTIMIZATION: Pre-process product display strings (currency formatting, decimal stock, search text,
+  // low stock flags) in O(N) when `products` change. This eliminates repeated `toLocaleString('id-ID')`,
+  // `.toFixed(2)`, and `.toLowerCase()` calls during high-frequency render loops (search keystrokes & numpad inputs).
+  const preparedProducts = useMemo(() => {
+    return products.map((product) => {
+      const formattedPrice = product.selling_price.toLocaleString('id-ID');
+      const formattedStock =
+        product.stock % 1 === 0 ? product.stock.toString() : product.stock.toFixed(2);
+      const isOutOfStock = product.stock <= 0;
+      const isLowStock = product.stock <= product.min_stock && !isOutOfStock;
+      const searchName = product.name.toLowerCase();
+      const searchSku = product.sku?.toLowerCase() ?? '';
+
+      return {
+        raw: product,
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        unit: product.unit,
+        selling_price: product.selling_price,
+        stock: product.stock,
+        min_stock: product.min_stock,
+        is_active: product.is_active,
+        category_id: product.category_id,
+        category: product.category,
+        formattedPrice,
+        formattedStock,
+        isOutOfStock,
+        isLowStock,
+        searchName,
+        searchSku,
+      };
+    });
+  }, [products]);
+
+  // Filtered products list with pre-normalized search fields and early category short-circuiting
   const filteredProducts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const hasQuery = normalizedQuery.length > 0;
     const isAllCategories = selectedCategoryId === 'all';
 
-    return products.filter((prod) => {
+    return preparedProducts.filter((prod) => {
       if (prod.is_active === false) return false;
       if (!isAllCategories && prod.category_id !== selectedCategoryId) return false;
       if (!hasQuery) return true;
 
       return (
-        prod.name.toLowerCase().includes(normalizedQuery) ||
-        (prod.sku?.toLowerCase().includes(normalizedQuery) ?? false)
+        prod.searchName.includes(normalizedQuery) ||
+        prod.searchSku.includes(normalizedQuery)
       );
     });
-  }, [products, searchQuery, selectedCategoryId]);
+  }, [preparedProducts, searchQuery, selectedCategoryId]);
 
   // Selected Cart Item for Virtual Numpad manipulation
   const activeCartItem = useMemo(() => {
@@ -289,29 +330,25 @@ export const PosView: React.FC = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-3.5 pb-24 md:pb-4">
               {filteredProducts.map((product) => {
-                const isOutOfStock = product.stock <= 0;
-                const isLowStock = product.stock <= product.min_stock && !isOutOfStock;
                 const inCart = cartItemMap.get(product.id);
-
-                const formattedStock = product.stock % 1 === 0 ? product.stock : product.stock.toFixed(2);
-                const ariaText = `${product.name}, Rp ${product.selling_price.toLocaleString('id-ID')}, Stok: ${formattedStock} ${product.unit}${inCart ? `, Di keranjang: ${inCart.cart_quantity} ${inCart.unit}` : ''}${isOutOfStock ? ', Stok habis' : ''}`;
+                const ariaText = `${product.name}, Rp ${product.formattedPrice}, Stok: ${product.formattedStock} ${product.unit}${inCart ? `, Di keranjang: ${inCart.cart_quantity} ${inCart.unit}` : ''}${product.isOutOfStock ? ', Stok habis' : ''}`;
 
                 return (
                   <div
                     key={product.id}
                     role="button"
-                    tabIndex={isOutOfStock ? -1 : 0}
+                    tabIndex={product.isOutOfStock ? -1 : 0}
                     aria-label={ariaText}
-                    aria-disabled={isOutOfStock}
-                    onClick={() => handleProductClick(product)}
+                    aria-disabled={product.isOutOfStock}
+                    onClick={() => handleProductClick(product.raw)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        handleProductClick(product);
+                        handleProductClick(product.raw);
                       }
                     }}
                     className={`group relative bg-slate-900 border rounded-xl p-3 sm:p-4 flex flex-col justify-between transition-all select-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none ${
-                      isOutOfStock
+                      product.isOutOfStock
                         ? 'opacity-50 border-slate-800 cursor-not-allowed'
                         : inCart
                         ? 'border-emerald-500/80 bg-slate-900/90 ring-1 ring-emerald-500/50 shadow-md cursor-pointer'
@@ -345,29 +382,28 @@ export const PosView: React.FC = () => {
                       {/* Price and Stock status */}
                       <div className="flex justify-between items-baseline mb-2">
                         <span className="font-black text-sm sm:text-base text-emerald-400 font-mono">
-                          Rp {product.selling_price.toLocaleString('id-ID')}
+                          Rp {product.formattedPrice}
                         </span>
                         <span
                           className={`text-[10px] font-semibold ${
-                            isOutOfStock
+                            product.isOutOfStock
                               ? 'text-rose-400 font-bold'
-                              : isLowStock
+                              : product.isLowStock
                               ? 'text-amber-400'
                               : 'text-slate-400'
                           }`}
                         >
-                          Stok: {product.stock % 1 === 0 ? product.stock : product.stock.toFixed(2)}{' '}
-                          {product.unit}
+                          Stok: {product.formattedStock} {product.unit}
                         </span>
                       </div>
 
                       {/* Quick Decimal Add Buttons for Toko Bangunan (e.g., 0.5, 1, 2) */}
-                      {!isOutOfStock && (
+                      {!product.isOutOfStock && (
                         <div className="grid grid-cols-3 gap-1 pt-1">
                           <button
                             type="button"
                             aria-label={`Tambah 0.5 ${product.unit} ${product.name}`}
-                            onClick={(e) => handleQuickAddFraction(product, 0.5, e)}
+                            onClick={(e) => handleQuickAddFraction(product.raw, 0.5, e)}
                             className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-amber-600 text-amber-300 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
                             title="Tambah 0.5"
                           >
@@ -376,7 +412,7 @@ export const PosView: React.FC = () => {
                           <button
                             type="button"
                             aria-label={`Tambah 1 ${product.unit} ${product.name}`}
-                            onClick={(e) => handleQuickAddFraction(product, 1, e)}
+                            onClick={(e) => handleQuickAddFraction(product.raw, 1, e)}
                             className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                             title="Tambah 1"
                           >
@@ -385,7 +421,7 @@ export const PosView: React.FC = () => {
                           <button
                             type="button"
                             aria-label={`Tambah 5 ${product.unit} ${product.name}`}
-                            onClick={(e) => handleQuickAddFraction(product, 5, e)}
+                            onClick={(e) => handleQuickAddFraction(product.raw, 5, e)}
                             className="py-1 text-[11px] font-bold bg-slate-800 hover:bg-slate-700 active:bg-emerald-600 text-slate-200 hover:text-white rounded border border-slate-700 transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                             title="Tambah 5"
                           >
@@ -559,7 +595,7 @@ export const PosView: React.FC = () => {
             <div className="flex justify-between items-baseline">
               <span className="text-xs uppercase font-bold text-slate-400">Total Belanja</span>
               <span className="text-2xl font-black text-emerald-400 font-mono">
-                Rp {getTotalAmount().toLocaleString('id-ID')}
+                Rp {formattedTotalAmount}
               </span>
             </div>
 
@@ -587,7 +623,7 @@ export const PosView: React.FC = () => {
             <span>Keranjang ({cartItems.length})</span>
           </div>
           <span className="font-mono text-lg">
-            Rp {getTotalAmount().toLocaleString('id-ID')}
+            Rp {formattedTotalAmount}
           </span>
         </button>
       </div>
@@ -718,7 +754,7 @@ export const PosView: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs uppercase text-slate-400 font-bold">Total Pembayaran</span>
                 <span className="text-2xl font-black text-emerald-400 font-mono">
-                  Rp {getTotalAmount().toLocaleString('id-ID')}
+                  Rp {formattedTotalAmount}
                 </span>
               </div>
               <button
