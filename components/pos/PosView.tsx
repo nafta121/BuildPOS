@@ -132,6 +132,12 @@ export const PosView: React.FC = () => {
     });
   }, [products, searchQuery, selectedCategoryId]);
 
+  // Memoize total amount and formatted currency string to avoid calling
+  // `getTotalAmount()` 3 times and executing `.toLocaleString('id-ID')` 3 times on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const totalAmount = useMemo(() => getTotalAmount(), [cartItems]);
+  const formattedTotalAmount = useMemo(() => totalAmount.toLocaleString('id-ID'), [totalAmount]);
+
   // Selected Cart Item for Virtual Numpad manipulation
   const activeCartItem = useMemo(() => {
     if (!selectedProductId) {
@@ -559,7 +565,7 @@ export const PosView: React.FC = () => {
             <div className="flex justify-between items-baseline">
               <span className="text-xs uppercase font-bold text-slate-400">Total Belanja</span>
               <span className="text-2xl font-black text-emerald-400 font-mono">
-                Rp {getTotalAmount().toLocaleString('id-ID')}
+                Rp {formattedTotalAmount}
               </span>
             </div>
 
@@ -587,7 +593,7 @@ export const PosView: React.FC = () => {
             <span>Keranjang ({cartItems.length})</span>
           </div>
           <span className="font-mono text-lg">
-            Rp {getTotalAmount().toLocaleString('id-ID')}
+            Rp {formattedTotalAmount}
           </span>
         </button>
       </div>
@@ -718,7 +724,7 @@ export const PosView: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs uppercase text-slate-400 font-bold">Total Pembayaran</span>
                 <span className="text-2xl font-black text-emerald-400 font-mono">
-                  Rp {getTotalAmount().toLocaleString('id-ID')}
+                  Rp {formattedTotalAmount}
                 </span>
               </div>
               <button
