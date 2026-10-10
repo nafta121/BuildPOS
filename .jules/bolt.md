@@ -12,3 +12,7 @@
 ## 2026-09-28 - Transaction History Table Rendering CPU Bottleneck with Date & I18N Formatting
 **Learning:** In `TransactionHistoryView`, `toLocaleDateString('id-ID')`, `.toLocaleString('id-ID')`, and `items.map().join()` ran inside table row rendering loops on every keystroke in search or modal state change (`activeReceiptTx`), instantiating I18N formatters repeatedly and causing UI lag.
 **Action:** Pre-process transaction display fields (`formattedDate`, `itemsSummary`, `formattedTotal`, `searchStr`) into a `preparedTransactions` `useMemo` hook whenever `transactions` change.
+
+## 2026-10-10 - POS Cart Totals Formatting and Virtual Numpad Re-renders
+**Learning:** In BuildPOS, `getTotalAmount().toLocaleString('id-ID')` was invoked multiple times directly inside `PosView` JSX and `CheckoutModal` rendering loops on every keystroke in search or payment input, instantiating I18N formatters repeatedly and re-running cart reductions. Furthermore, unmemoized `VirtualNumpad` re-rendered on every parent state change.
+**Action:** Wrap `VirtualNumpad` in `React.memo` and memoize store total results and `toLocaleString('id-ID')` formatted strings using `useMemo` in `PosView` and `CheckoutModal`.

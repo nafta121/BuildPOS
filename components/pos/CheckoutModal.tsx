@@ -1,7 +1,7 @@
 // components/pos/CheckoutModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { checkoutAction } from '@/app/actions/pos';
@@ -32,6 +32,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Memoize total quantity, formatted total, and cash suggestions to prevent
+  // redundant calculations and array allocations on every numpad keystroke in CheckoutModal.
+  const totalQuantity = useMemo(() => {
+    return items.reduce((acc, i) => acc + i.cart_quantity, 0);
+  }, [items]);
+
+  const formattedActiveTotal = useMemo(() => {
+    return activeTotal.toLocaleString('id-ID');
+  }, [activeTotal]);
+
+  const cashSuggestions = useMemo(() => {
+    return [
+      { label: 'Uang Pas', value: activeTotal },
+      { label: 'Rp 50.000', value: 50000 },
+      { label: 'Rp 100.000', value: 100000 },
+      { label: 'Rp 200.000', value: 200000 },
+      { label: 'Rp 500.000', value: 500000 },
+    ].filter((s) => s.value >= activeTotal || s.label === 'Uang Pas');
+  }, [activeTotal]);
+
   // Sinkronkan nominal uang default saat modal dibuka atau total berubah
   useEffect(() => {
     if (isOpen) {
@@ -45,15 +65,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const amountPaidNum = parseFloat(amountPaidStr || '0');
   const changeAmount = amountPaidNum - activeTotal;
   const isSufficient = amountPaidNum >= activeTotal;
-
-  // Saran uang tunai cepat (Fat-finger friendly)
-  const cashSuggestions = [
-    { label: 'Uang Pas', value: activeTotal },
-    { label: 'Rp 50.000', value: 50000 },
-    { label: 'Rp 100.000', value: 100000 },
-    { label: 'Rp 200.000', value: 200000 },
-    { label: 'Rp 500.000', value: 500000 },
-  ].filter((s) => s.value >= activeTotal || s.label === 'Uang Pas');
 
   const handleCheckout = async () => {
     if (amountPaidNum < 0) {
@@ -142,10 +153,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
               <span className="text-xs text-slate-400 uppercase font-semibold">Total Tagihan</span>
               <div className="text-3xl font-black text-emerald-400 tracking-tight mt-1 font-mono">
-                Rp {activeTotal.toLocaleString('id-ID')}
+                Rp {formattedActiveTotal}
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                {items.length} jenis barang ({items.reduce((acc, i) => acc + i.cart_quantity, 0)} total kuantitas)
+                {items.length} jenis barang ({totalQuantity} total kuantitas)
               </p>
             </div>
 
@@ -256,7 +267,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <h3 className="font-bold text-white text-base">Pembayaran Non-Tunai / Transfer</h3>
                 <p className="text-xs text-slate-400 max-w-xs">
                   Pastikan dana transfer / QRIS sebesar{' '}
-                  <strong className="text-emerald-400">Rp {activeTotal.toLocaleString('id-ID')}</strong>{' '}
+                  <strong className="text-emerald-400">Rp {formattedActiveTotal}</strong>{' '}
                   telah masuk ke rekening toko.
                 </p>
                 <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs font-mono text-slate-300 w-full text-left">
@@ -297,7 +308,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <span>
                   {paymentMethod === 'tunai'
                     ? `Konfirmasi Bayar & Cetak Nota`
-                    : `Selesaikan Transfer (Rp ${activeTotal.toLocaleString('id-ID')})`}
+                    : `Selesaikan Transfer (Rp ${formattedActiveTotal})`}
                 </span>
               </>
             )}

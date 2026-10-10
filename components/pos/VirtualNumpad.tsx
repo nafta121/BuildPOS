@@ -19,7 +19,9 @@ export interface VirtualNumpadProps {
   onPresetClick?: (delta: number) => void;
 }
 
-export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
+// OPTIMIZATION: Wrapped in React.memo to prevent unnecessary re-renders of the Virtual Numpad
+// when parent views (PosView, CheckoutModal) re-render due to search inputs or unrelated state updates.
+export const VirtualNumpad: React.FC<VirtualNumpadProps> = React.memo(({
   value = '',
   onChange,
   onKeyPress,
@@ -222,4 +224,6 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
       </div>
     </div>
   );
-};
+});
+
+VirtualNumpad.displayName = 'VirtualNumpad';
