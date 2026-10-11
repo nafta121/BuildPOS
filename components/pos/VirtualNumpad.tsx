@@ -19,7 +19,14 @@ export interface VirtualNumpadProps {
   onPresetClick?: (delta: number) => void;
 }
 
-export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
+// Preset default arrays declared outside component to avoid repeated allocations on every render
+const DEFAULT_QTY_PRESETS = [0.5, 1, 2, 5, 10];
+const DEFAULT_CASH_PRESETS = [50000, 100000, 200000, 500000];
+
+// OPTIMIZATION: Memoized with React.memo to prevent unnecessary re-renders of the VirtualNumpad
+// (display, 12 tactile buttons, presets, icons) when parent state changes in PosView or CheckoutModal
+// that do not alter VirtualNumpad props.
+export const VirtualNumpad: React.FC<VirtualNumpadProps> = React.memo(({
   value = '',
   onChange,
   onKeyPress,
@@ -76,10 +83,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
   };
 
   // Preset default kuantitas pecahan (toko bangunan) & mata uang tunai
-  const defaultQtyPresets = [0.5, 1, 2, 5, 10];
-  const defaultCashPresets = [50000, 100000, 200000, 500000];
-
-  const presetsToUse = quickPresets || (mode === 'qty' ? defaultQtyPresets : defaultCashPresets);
+  const presetsToUse = quickPresets || (mode === 'qty' ? DEFAULT_QTY_PRESETS : DEFAULT_CASH_PRESETS);
 
   return (
     <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 sm:p-4 text-white shadow-xl select-none">
@@ -222,4 +226,6 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
       </div>
     </div>
   );
-};
+});
+
+VirtualNumpad.displayName = 'VirtualNumpad';
