@@ -50,7 +50,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded text-sm font-medium transition"
+            aria-label="Cetak struk belanja"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
           >
             <Printer className="w-4 h-4" />
             Cetak Struk
@@ -58,7 +59,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition"
+              aria-label="Tutup struk belanja"
+              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
               title="Tutup"
             >
               <X className="w-4 h-4" />
@@ -70,6 +72,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
       {/* Thermal Receipt Paper (58mm / 80mm printable layout) */}
       <div
         id="thermal-receipt"
+        role="region"
+        aria-label="Struk belanja"
         className="thermal-receipt bg-white text-black p-4 font-mono text-xs w-[320px] max-w-[320px] shadow-lg border border-slate-200 rounded-sm print:shadow-none print:border-none print:w-full print:p-0"
       >
         {/* Header */}
