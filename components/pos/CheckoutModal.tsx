@@ -1,7 +1,7 @@
 // components/pos/CheckoutModal.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { checkoutAction } from '@/app/actions/pos';
@@ -47,13 +47,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const isSufficient = amountPaidNum >= activeTotal;
 
   // Saran uang tunai cepat (Fat-finger friendly)
-  const cashSuggestions = [
-    { label: 'Uang Pas', value: activeTotal },
-    { label: 'Rp 50.000', value: 50000 },
-    { label: 'Rp 100.000', value: 100000 },
-    { label: 'Rp 200.000', value: 200000 },
-    { label: 'Rp 500.000', value: 500000 },
-  ].filter((s) => s.value >= activeTotal || s.label === 'Uang Pas');
+  // OPTIMISASI: Memoize cashSuggestions agar tidak re-allocating array dan re-filtering pada setiap keystroke numpad
+  const cashSuggestions = useMemo(() => {
+    return [
+      { label: 'Uang Pas', value: activeTotal },
+      { label: 'Rp 50.000', value: 50000 },
+      { label: 'Rp 100.000', value: 100000 },
+      { label: 'Rp 200.000', value: 200000 },
+      { label: 'Rp 500.000', value: 500000 },
+    ].filter((s) => s.value >= activeTotal || s.label === 'Uang Pas');
+  }, [activeTotal]);
 
   const handleCheckout = async () => {
     if (amountPaidNum < 0) {
