@@ -654,8 +654,9 @@ export const PosView: React.FC = () => {
                         }}
                         aria-label={`Kurangi 0.5 ${item.unit} ${item.name}`}
                         className="w-8 h-8 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-200 font-bold text-sm transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                        title="Kurangi 0.5"
                       >
-                        -
+                        <Minus className="w-4 h-4" />
                       </button>
                       <div className="flex items-center bg-slate-900 rounded border border-slate-700 px-1">
                         <input
@@ -682,8 +683,9 @@ export const PosView: React.FC = () => {
                         }}
                         aria-label={`Tambah 0.5 ${item.unit} ${item.name}`}
                         className="w-8 h-8 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded flex items-center justify-center text-slate-200 font-bold text-sm transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                        title="Tambah 0.5"
                       >
-                        +
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="font-mono font-black text-white text-base">
