@@ -19,6 +19,10 @@ export interface VirtualNumpadProps {
   onPresetClick?: (delta: number) => void;
 }
 
+// Preset default kuantitas pecahan (toko bangunan) & mata uang tunai - hoisted outside component to prevent array allocation on every render
+const DEFAULT_QTY_PRESETS = [0.5, 1, 2, 5, 10];
+const DEFAULT_CASH_PRESETS = [50000, 100000, 200000, 500000];
+
 export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
   value = '',
   onChange,
@@ -75,11 +79,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
     }
   };
 
-  // Preset default kuantitas pecahan (toko bangunan) & mata uang tunai
-  const defaultQtyPresets = [0.5, 1, 2, 5, 10];
-  const defaultCashPresets = [50000, 100000, 200000, 500000];
-
-  const presetsToUse = quickPresets || (mode === 'qty' ? defaultQtyPresets : defaultCashPresets);
+  const presetsToUse = quickPresets || (mode === 'qty' ? DEFAULT_QTY_PRESETS : DEFAULT_CASH_PRESETS);
 
   return (
     <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 sm:p-4 text-white shadow-xl select-none">
