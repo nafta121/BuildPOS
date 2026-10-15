@@ -132,13 +132,14 @@ export const PosView: React.FC = () => {
     });
   }, [products, searchQuery, selectedCategoryId]);
 
-  // Selected Cart Item for Virtual Numpad manipulation
+  // OPTIMIZATION: Selected Cart Item for Virtual Numpad manipulation using O(1) cartItemMap lookup
+  // instead of array.find linear scans on every render pass.
   const activeCartItem = useMemo(() => {
     if (!selectedProductId) {
       return cartItems.length > 0 ? cartItems[cartItems.length - 1] : null;
     }
-    return cartItems.find((i) => i.id === selectedProductId) || null;
-  }, [cartItems, selectedProductId]);
+    return cartItemMap.get(selectedProductId) || null;
+  }, [cartItems, selectedProductId, cartItemMap]);
 
   // Numpad quantity value string
   const [numpadQtyStr, setNumpadQtyStr] = useState<string>('');
@@ -151,7 +152,8 @@ export const PosView: React.FC = () => {
     }
   }, [activeCartItem]);
 
-  const handleNumpadChange = (val: string) => {
+  // OPTIMIZATION: Memoized callback handlers prevent breaking React.memo on VirtualNumpad
+  const handleNumpadChange = useCallback((val: string) => {
     setNumpadQtyStr(val);
     if (activeCartItem) {
       const parsed = parseFloat(val);
@@ -159,13 +161,24 @@ export const PosView: React.FC = () => {
         updateQuantity(activeCartItem.id, parsed);
       }
     }
-  };
+  }, [activeCartItem, updateQuantity]);
 
-  const handleNumpadPreset = (delta: number) => {
+  const handleNumpadPreset = useCallback((delta: number) => {
     if (activeCartItem) {
       incrementQuantity(activeCartItem.id, delta);
     }
-  };
+  }, [activeCartItem, incrementQuantity]);
+
+  const handleNumpadEnter = useCallback(() => {
+    setSelectedProductId(null);
+  }, [setSelectedProductId]);
+
+  const handleNumpadClear = useCallback(() => {
+    setNumpadQtyStr('0');
+    if (activeCartItem) {
+      updateQuantity(activeCartItem.id, 0);
+    }
+  }, [activeCartItem, updateQuantity]);
 
   const handleProductClick = (product: Product) => {
     if (product.stock <= 0) return;
@@ -545,11 +558,8 @@ export const PosView: React.FC = () => {
                 title={`Atur Qty: ${activeCartItem.name}`}
                 unit={activeCartItem.unit}
                 mode="qty"
-                onEnter={() => setSelectedProductId(null)}
-                onClear={() => {
-                  setNumpadQtyStr('0');
-                  updateQuantity(activeCartItem.id, 0);
-                }}
+                onEnter={handleNumpadEnter}
+                onClear={handleNumpadClear}
               />
             </div>
           )}
@@ -703,11 +713,8 @@ export const PosView: React.FC = () => {
                     title={`Atur Qty: ${activeCartItem.name}`}
                     unit={activeCartItem.unit}
                     mode="qty"
-                    onEnter={() => setSelectedProductId(null)}
-                    onClear={() => {
-                      setNumpadQtyStr('0');
-                      updateQuantity(activeCartItem.id, 0);
-                    }}
+                    onEnter={handleNumpadEnter}
+                    onClear={handleNumpadClear}
                   />
                 </div>
               )}
