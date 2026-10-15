@@ -20,6 +20,16 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
   storePhone = '0812-3456-7890',
   onClose,
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -50,7 +60,8 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded text-sm font-medium transition"
+            aria-label="Cetak Struk"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
           >
             <Printer className="w-4 h-4" />
             Cetak Struk
@@ -58,8 +69,9 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
           {onClose && (
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition"
-              title="Tutup"
+              aria-label="Tutup nota struk"
+              className="p-1.5 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
+              title="Tutup (Esc)"
             >
               <X className="w-4 h-4" />
             </button>
