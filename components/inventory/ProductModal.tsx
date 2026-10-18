@@ -38,8 +38,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             {editingProduct ? 'Edit Master Produk' : 'Tambah Produk Bahan Bangunan'}
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1"
+            aria-label="Tutup modal master produk"
+            className="text-slate-400 hover:text-white p-1 rounded-lg transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
           >
             <X className="w-5 h-5" />
           </button>
@@ -53,41 +55,44 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+            <label htmlFor="product-sku" className="block text-xs font-bold uppercase text-slate-400 mb-1">
               SKU / Kode Barcode
             </label>
             <input
+              id="product-sku"
               type="text"
               value={formData.sku || ''}
               onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
               placeholder="Contoh: TB-001"
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-name" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Nama Produk *
               </label>
               <input
+                id="product-name"
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Contoh: Semen Tiga Roda 50kg"
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-category" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Kategori
               </label>
               <select
+                id="product-category"
                 value={formData.category_id || ''}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -100,13 +105,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-unit" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Satuan Jual (Unit) *
               </label>
               <select
+                id="product-unit"
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-bold"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-bold focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               >
                 <option value="Meter">Meter (Pecahan Kabel/Pipa/Seng)</option>
                 <option value="Kubik">Kubik / m³ (Pasir/Bata/Batu)</option>
@@ -123,10 +129,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-min-stock" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Min. Stok Peringatan
               </label>
               <input
+                id="product-min-stock"
                 type="number"
                 step="0.01"
                 min="0"
@@ -134,17 +141,18 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, min_stock: Math.max(0, parseFloat(e.target.value) || 0) })
                 }
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-cost-price" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Harga Modal / HPP (Rp)
               </label>
               <input
+                id="product-cost-price"
                 type="number"
                 step="0.01"
                 min="0"
@@ -152,15 +160,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, cost_price: Math.max(0, parseFloat(e.target.value) || 0) })
                 }
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+              <label htmlFor="product-selling-price" className="block text-xs font-bold uppercase text-slate-400 mb-1">
                 Harga Jual Kasir (Rp) *
               </label>
               <input
+                id="product-selling-price"
                 type="number"
                 step="0.01"
                 min="0"
@@ -169,16 +178,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, selling_price: Math.max(0, parseFloat(e.target.value) || 0) })
                 }
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-emerald-400 font-bold font-mono"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-emerald-400 font-bold font-mono focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase text-slate-400 mb-1">
+            <label htmlFor="product-stock" className="block text-xs font-bold uppercase text-slate-400 mb-1">
               Stok Awal Fisik (Bisa Desimal, contoh 18.5)
             </label>
             <input
+              id="product-stock"
               type="number"
               step="0.01"
               min="0"
@@ -187,7 +197,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, stock: Math.max(0, parseFloat(e.target.value) || 0) })
               }
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono font-bold"
+              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white font-mono font-bold focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
             />
           </div>
 
@@ -195,14 +205,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:outline-none"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg"
+              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg transition focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             >
               {isSubmitting ? 'Menyimpan...' : 'Simpan Produk'}
             </button>
