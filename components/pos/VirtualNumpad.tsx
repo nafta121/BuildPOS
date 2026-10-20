@@ -19,7 +19,14 @@ export interface VirtualNumpadProps {
   onPresetClick?: (delta: number) => void;
 }
 
-export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
+// Module-level static constants to eliminate repeated object/array allocations during frequent renders
+const DEFAULT_QTY_PRESETS = [0.5, 1, 2, 5, 10];
+const DEFAULT_CASH_PRESETS = [50000, 100000, 200000, 500000];
+const DIGIT_KEYS = ['7', '8', '9', '4', '5', '6', '1', '2', '3'];
+
+// OPTIMIZATION: Memoized with React.memo to prevent unnecessary VirtualNumpad re-renders
+// when parent components re-render during high-frequency cashier interactions or POS cart updates.
+export const VirtualNumpad: React.FC<VirtualNumpadProps> = React.memo(({
   value = '',
   onChange,
   onKeyPress,
@@ -75,11 +82,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
     }
   };
 
-  // Preset default kuantitas pecahan (toko bangunan) & mata uang tunai
-  const defaultQtyPresets = [0.5, 1, 2, 5, 10];
-  const defaultCashPresets = [50000, 100000, 200000, 500000];
-
-  const presetsToUse = quickPresets || (mode === 'qty' ? defaultQtyPresets : defaultCashPresets);
+  const presetsToUse = quickPresets || (mode === 'qty' ? DEFAULT_QTY_PRESETS : DEFAULT_CASH_PRESETS);
 
   return (
     <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 sm:p-4 text-white shadow-xl select-none">
@@ -150,7 +153,7 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
 
       {/* Main 4x3 Grid (Big Tactile Keys) */}
       <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-        {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((digit) => (
+        {DIGIT_KEYS.map((digit) => (
           <button
             key={digit}
             type="button"
@@ -222,4 +225,6 @@ export const VirtualNumpad: React.FC<VirtualNumpadProps> = ({
       </div>
     </div>
   );
-};
+});
+
+VirtualNumpad.displayName = 'VirtualNumpad';
