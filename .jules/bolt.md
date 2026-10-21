@@ -12,3 +12,7 @@
 ## 2026-09-28 - Transaction History Table Rendering CPU Bottleneck with Date & I18N Formatting
 **Learning:** In `TransactionHistoryView`, `toLocaleDateString('id-ID')`, `.toLocaleString('id-ID')`, and `items.map().join()` ran inside table row rendering loops on every keystroke in search or modal state change (`activeReceiptTx`), instantiating I18N formatters repeatedly and causing UI lag.
 **Action:** Pre-process transaction display fields (`formattedDate`, `itemsSummary`, `formattedTotal`, `searchStr`) into a `preparedTransactions` `useMemo` hook whenever `transactions` change.
+
+## 2026-09-30 - High-Frequency Numpad Entry Re-renders and Preset Array Allocations
+**Learning:** In `CheckoutModal` and `VirtualNumpad`, cash entry via Virtual Numpad updates `amountPaidStr` state on every digit keypress. Unmemoized `cashSuggestions` filtering, cart items quantity reduction, and default preset array allocations ran on every single keystroke, causing unnecessary GC pressure and CPU cycles during fast cashier input.
+**Action:** Hoist default preset arrays outside `VirtualNumpad`, wrap `VirtualNumpad` in `React.memo`, and memoize `cashSuggestions` and `totalCartQuantity` in `CheckoutModal` using `useMemo`.
